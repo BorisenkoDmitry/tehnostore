@@ -123,6 +123,14 @@ def project_directory(path):
     return directory_metadata(path, "project directory size")
 
 
+def project_root(path):
+    """Include all /opt project releases without broadening Coolify trees."""
+    directory = pathlib.PurePosixPath(path)
+    if directory.is_absolute() and len(directory.parts) >= 3 and directory.parts[1] == "opt":
+        return str(pathlib.PurePosixPath("/opt", directory.parts[2]))
+    return path
+
+
 def memory():
     values = {}
     try:
@@ -248,6 +256,18 @@ def main():
         group["working_dir_apparent_bytes"] = sum(row["apparent_bytes"] or 0 for row in unique_working_dirs.values())
         group["working_dir_allocated_bytes"] = sum(row["allocated_bytes"] or 0 for row in unique_working_dirs.values())
         group["working_dir_measurement_failures"] = sum(row["apparent_bytes"] is None or row["allocated_bytes"] is None for row in unique_working_dirs.values())
+        roots = {}
+        for directory in group["working_dirs"]:
+            root_path = project_root(directory["path"])
+            metadata = directory_metadata(root_path, "complete project root size")
+            roots.setdefault(metadata.get("canonical_path", root_path), metadata)
+        group["project_roots"] = [roots[path] for path in sorted(roots)]
+        group["project_root_apparent_bytes"] = sum(row["apparent_bytes"] or 0 for row in roots.values())
+        group["project_root_allocated_bytes"] = sum(row["allocated_bytes"] or 0 for row in roots.values())
+        group["project_root_count"] = len(roots)
+        group["project_root_measurement_failures"] = sum(row["apparent_bytes"] is None or row["allocated_bytes"] is None for row in roots.values())
+        group["project_root_apparent_measurement_failures"] = sum(row["apparent_bytes"] is None for row in roots.values())
+        group["project_root_allocated_measurement_failures"] = sum(row["allocated_bytes"] is None for row in roots.values())
         group["bind_sources"] = sorted(group["bind_sources"])
         group["bind_source_apparent_bytes"] = sum(bind_sources[path]["apparent_bytes"] or 0 for path in group["bind_sources"])
         group["bind_source_allocated_bytes"] = sum(bind_sources[path]["allocated_bytes"] or 0 for path in group["bind_sources"])
@@ -279,6 +299,7 @@ def main():
             "Legacy bytes/named_volume_bytes fields remain apparent bytes; apparent_bytes uses du -sb and allocated_bytes uses du -s -B1. Neither reads file contents.",
             "Bind metadata is limited to Type/Source/Destination; only directory sources are sized. Individual files, including secret/config/certificate binds, and sources under /proc, /sys, /dev, /run, /etc or / are excluded.",
             "Exact canonical directory sources are deduplicated; aliases share one measurement. Parent/child directories, project trees, bind sources and volumes can still overlap and must not be added as disjoint storage.",
+            "project_roots expands /opt/<name>/... working directories to the complete /opt/<name> tree, including older releases/backups. Other paths, especially /data/coolify/..., remain exact working directories. Exact canonical roots are deduplicated per project; roots shared by or nested across different projects can overlap and must not be summed blindly. Existing working_dir fields still measure the active Compose working directories.",
             "Image virtual sizes include shared layers: do not sum project image sizes as actual disk usage.",
             "Image totals include successfully measured images only; missing images have null sizes and explicit errors. A project with no known image sizes has a null image total; consult image_measurement_complete before using a partial total.",
             "Shared volumes and overlapping project directories can appear in multiple project rows; do not sum them blindly.",

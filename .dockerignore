@@ -1,0 +1,14 @@
+.git
+**/node_modules
+**/.medusa
+**/.next
+**/.turbo
+**/dist
+**/build
+**/.env
+**/.env.*.local
+**/.env.local
+.env.compose
+.local
+*.log
+coverage

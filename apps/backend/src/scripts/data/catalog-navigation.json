@@ -1,0 +1,751 @@
+[
+  {
+    "id": "apple-iphone",
+    "parent_id": null,
+    "label": "Apple iPhone",
+    "href": "/collection/apple-iphone",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-17-pro-max",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 17 Pro Max",
+    "href": "/collection/apple-iphone-17-pro-max",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-17-pro",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 17 Pro",
+    "href": "/collection/apple-iphone-17-pro",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-16-pro-max",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 16 Pro Max",
+    "href": "/collection/apple-iphone-16-pro-max",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-16-plus",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 16 Plus",
+    "href": "/collection/apple-iphone-16-plus",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-16",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 16",
+    "href": "/collection/apple-iphone-16",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-15-pro",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 15 Pro",
+    "href": "/collection/apple-iphone-15-pro",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-15",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 15",
+    "href": "/collection/apple-iphone-15",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-14-pro-max",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 14 Pro Max",
+    "href": "/collection/apple-iphone-14-pro-max",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-14-pro",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 14 Pro",
+    "href": "/collection/apple-iphone-14-pro",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-14-plus",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 14 Plus",
+    "href": "/collection/apple-iphone-14-plus",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-14",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 14",
+    "href": "/collection/apple-iphone-14",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-se-2022",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone SE 2022",
+    "href": "/collection/apple-iphone-se-2022",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-13-pro-max",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 13 Pro Max",
+    "href": "/collection/apple-iphone-13-pro-max",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-13-pro",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 13 Pro",
+    "href": "/collection/apple-iphone-13-pro",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-13",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 13",
+    "href": "/collection/apple-iphone-13",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-13-mini",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 13 Mini",
+    "href": "/collection/apple-iphone-13-mini",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-12-pro-max",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 12 Pro Max",
+    "href": "/collection/apple-iphone-12-pro-max",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-12-pro",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 12 Pro",
+    "href": "/collection/apple-iphone-12-pro",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-12",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 12",
+    "href": "/collection/apple-iphone-12",
+    "visible": true
+  },
+  {
+    "id": "iphone-12-mini",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 12 Mini",
+    "href": "/collection/iphone-12-mini",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-se-2020",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone SE 2020",
+    "href": "/collection/apple-iphone-se-2020",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-11-pro-max",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 11 Pro Max",
+    "href": "/collection/apple-iphone-11-pro-max",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-11-pro",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 11 Pro",
+    "href": "/collection/apple-iphone-11-pro",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-11",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone 11",
+    "href": "/collection/apple-iphone-11",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-xs",
+    "parent_id": "apple-iphone",
+    "label": "Apple iPhone XS",
+    "href": "/collection/apple-iphone-xs",
+    "visible": true
+  },
+  {
+    "id": "apple-iphone-x",
+    "parent_id": "apple-iphone",
+    "label": "Apple IPhone X",
+    "href": "/collection/apple-iphone-x",
+    "visible": true
+  },
+  {
+    "id": "samsung",
+    "parent_id": null,
+    "label": "Samsung",
+    "href": "/collection/samsung",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-s24-fe",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy S24 FE",
+    "href": "/collection/samsung-galaxy-s24-fe",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-z-flip-6",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy Z Flip 6",
+    "href": "/collection/samsung-galaxy-z-flip-6",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-s24-ultra",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy S24 Ultra",
+    "href": "/collection/samsung-galaxy-s24-ultra",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-s24-plus",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy S24 Plus",
+    "href": "/collection/samsung-galaxy-s24-plus",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-s24",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy S24",
+    "href": "/collection/samsung-galaxy-s24",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-z-flip-5",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy Z Flip 5",
+    "href": "/collection/samsung-galaxy-z-flip-5",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-s23-ultra",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy S23 Ultra",
+    "href": "/collection/samsung-galaxy-s23-ultra",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-s23-plus",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy S23 Plus",
+    "href": "/collection/samsung-galaxy-s23-plus",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-z-flip-4",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy Z Flip 4",
+    "href": "/collection/samsung-galaxy-z-flip-4",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-s22-ultra",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy S22 Ultra",
+    "href": "/collection/samsung-galaxy-s22-ultra",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-s22-plus",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy S22 Plus",
+    "href": "/collection/samsung-galaxy-s22-plus",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-s22",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy S22",
+    "href": "/collection/samsung-galaxy-s22",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-s21-fe",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy S21 FE",
+    "href": "/collection/samsung-galaxy-s21-fe",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-s21-ultra",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy S21 Ultra",
+    "href": "/collection/samsung-galaxy-s21-ultra",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-s21-plus",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy S21 Plus",
+    "href": "/collection/samsung-galaxy-s21-plus",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-s21",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy S21",
+    "href": "/collection/samsung-galaxy-s21",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-s20-fe",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy S20 FE",
+    "href": "/collection/samsung-galaxy-s20-fe",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-note-20-ultra",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy Note 20 Ultra",
+    "href": "/collection/samsung-galaxy-note-20-ultra",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-note-20",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy Note 20",
+    "href": "/collection/samsung-galaxy-note-20",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-s20-ultra",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy S20 Ultra",
+    "href": "/collection/samsung-galaxy-s20-ultra",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-s20-plus",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy S20 Plus",
+    "href": "/collection/samsung-galaxy-s20-plus",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-s20",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy S20",
+    "href": "/collection/samsung-galaxy-s20",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-note-10-plus",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy Note 10 Plus",
+    "href": "/collection/samsung-galaxy-note-10-plus",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-note-10",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy Note 10",
+    "href": "/collection/samsung-galaxy-note-10",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-s10-plus",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy S10 Plus",
+    "href": "/collection/samsung-galaxy-s10-plus",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-s10",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy S10",
+    "href": "/collection/samsung-galaxy-s10",
+    "visible": true
+  },
+  {
+    "id": "samsung-galaxy-s9-plus",
+    "parent_id": "samsung",
+    "label": "Samsung Galaxy S9 Plus",
+    "href": "/collection/samsung-galaxy-s9-plus",
+    "visible": true
+  },
+  {
+    "id": "xiaomi",
+    "parent_id": null,
+    "label": "Xiaomi",
+    "href": "/collection/xiaomi",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-a3",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi A3",
+    "href": "/collection/xiaomi-redmi-a3",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-13c",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi 13C",
+    "href": "/collection/xiaomi-redmi-13c",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-poco-c65",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Poco C65",
+    "href": "/collection/xiaomi-poco-c65",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-12",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi 12",
+    "href": "/collection/xiaomi-redmi-12",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-note-12-pro",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi Note 12 Pro",
+    "href": "/collection/xiaomi-redmi-note-12-pro",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-10a",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi 10A",
+    "href": "/collection/xiaomi-redmi-10a",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-note-11-pro",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi Note 11 Pro",
+    "href": "/collection/xiaomi-redmi-note-11-pro",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-note-10-pro-cn",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi Note 10 Pro",
+    "href": "/collection/xiaomi-redmi-note-10-pro-cn",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-note-9t",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi Note 9T",
+    "href": "/collection/xiaomi-redmi-note-9t",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-9a",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi 9A",
+    "href": "/collection/xiaomi-redmi-9a",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-9",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi 9",
+    "href": "/collection/xiaomi-redmi-9",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-note-9",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi Note 9",
+    "href": "/collection/xiaomi-redmi-note-9",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-poco-x2-k30",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi POCO X2 (K30)",
+    "href": "/collection/xiaomi-redmi-poco-x2-k30",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-note-8t",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi Note 8T",
+    "href": "/collection/xiaomi-redmi-note-8t",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-8",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi 8",
+    "href": "/collection/xiaomi-redmi-8",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-note-8-pro",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi Note 8 Pro",
+    "href": "/collection/xiaomi-redmi-note-8-pro",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-note-8",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi Note 8",
+    "href": "/collection/xiaomi-redmi-note-8",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-7",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi 7",
+    "href": "/collection/xiaomi-redmi-7",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-note-7-pro",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi Note 7 Pro",
+    "href": "/collection/xiaomi-redmi-note-7-pro",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-mi-9-se",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Mi 9 SE",
+    "href": "/collection/xiaomi-mi-9-se",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-note-7",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi Note 7",
+    "href": "/collection/xiaomi-redmi-note-7",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-note-6-pro",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi Note 6 Pro",
+    "href": "/collection/xiaomi-redmi-note-6-pro",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-mi-max-3",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Mi Max 3",
+    "href": "/collection/xiaomi-mi-max-3",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-6-pro",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi 6 Pro",
+    "href": "/collection/xiaomi-redmi-6-pro",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-note-5",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi Note 5",
+    "href": "/collection/xiaomi-redmi-note-5",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-5-plus",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi 5 Plus",
+    "href": "/collection/xiaomi-redmi-5-plus",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-5",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi 5",
+    "href": "/collection/xiaomi-redmi-5",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-5a",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi 5A",
+    "href": "/collection/xiaomi-redmi-5a",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-note-5a",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi Note 5A",
+    "href": "/collection/xiaomi-redmi-note-5a",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-note-4x",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi Note 4X",
+    "href": "/collection/xiaomi-redmi-note-4x",
+    "visible": true
+  },
+  {
+    "id": "xiaomi-redmi-4x",
+    "parent_id": "xiaomi",
+    "label": "Xiaomi Redmi 4X",
+    "href": "/collection/xiaomi-redmi-4x",
+    "visible": true
+  },
+  {
+    "id": "honor",
+    "parent_id": null,
+    "label": "Huawei Honor",
+    "href": "/collection/honor",
+    "visible": true
+  },
+  {
+    "id": "huawei-y6p",
+    "parent_id": "honor",
+    "label": "Huawei Y6p",
+    "href": "/collection/huawei-y6p",
+    "visible": true
+  },
+  {
+    "id": "huawei-p40-lite",
+    "parent_id": "honor",
+    "label": "Huawei P40 Lite",
+    "href": "/collection/huawei-p40-lite",
+    "visible": true
+  },
+  {
+    "id": "huawei-p30",
+    "parent_id": "honor",
+    "label": "Huawei P30",
+    "href": "/collection/huawei-p30",
+    "visible": true
+  },
+  {
+    "id": "honor-8a",
+    "parent_id": "honor",
+    "label": "Honor 8A",
+    "href": "/collection/honor-8a",
+    "visible": true
+  },
+  {
+    "id": "honor-10-lite",
+    "parent_id": "honor",
+    "label": "Honor 10 Lite",
+    "href": "/collection/honor-10-lite",
+    "visible": true
+  },
+  {
+    "id": "honor-8x",
+    "parent_id": "honor",
+    "label": "Honor 8X",
+    "href": "/collection/honor-8x",
+    "visible": true
+  },
+  {
+    "id": "huawei-p20",
+    "parent_id": "honor",
+    "label": "Huawei P20",
+    "href": "/collection/huawei-p20",
+    "visible": true
+  },
+  {
+    "id": "aksessuary",
+    "parent_id": null,
+    "label": "Аксессуары",
+    "href": "/collection/aksessuary",
+    "visible": true
+  },
+  {
+    "id": "dlya-apple-iphone",
+    "parent_id": "aksessuary",
+    "label": "Для Apple iPhone",
+    "href": "/collection/dlya-apple-iphone",
+    "visible": true
+  },
+  {
+    "id": "dlya-samsung",
+    "parent_id": "aksessuary",
+    "label": "Для Samsung",
+    "href": "/collection/dlya-samsung",
+    "visible": true
+  },
+  {
+    "id": "dlya-xiaomi",
+    "parent_id": "aksessuary",
+    "label": "Для Xiaomi",
+    "href": "/collection/dlya-xiaomi",
+    "visible": true
+  },
+  {
+    "id": "dlya-huawei-honor",
+    "parent_id": "aksessuary",
+    "label": "Для Huawei Honor",
+    "href": "/collection/dlya-huawei-honor",
+    "visible": true
+  },
+  {
+    "id": "zaryadnye-ustroystva",
+    "parent_id": "aksessuary",
+    "label": "Зарядные устройства",
+    "href": "/collection/zaryadnye-ustroystva",
+    "visible": true
+  },
+  {
+    "id": "aksessuary-dlya-avto",
+    "parent_id": "aksessuary",
+    "label": "Аксессуары для авто",
+    "href": "/collection/aksessuary-dlya-avto",
+    "visible": true
+  },
+  {
+    "id": "zaschita-ekrana",
+    "parent_id": "aksessuary",
+    "label": "Защита экрана",
+    "href": "/collection/zaschita-ekrana",
+    "visible": true
+  },
+  {
+    "id": "chehly-bampera-nakladki",
+    "parent_id": "aksessuary",
+    "label": "Чехлы, бампера, накладки",
+    "href": "/collection/chehly-bampera-nakladki",
+    "visible": true
+  },
+  {
+    "id": "flash-karty",
+    "parent_id": "aksessuary",
+    "label": "Flash-карты",
+    "href": "/collection/flash-karty",
+    "visible": true
+  },
+  {
+    "id": "naushniki-i-garnitury",
+    "parent_id": "aksessuary",
+    "label": "Наушники и гарнитуры",
+    "href": "/collection/naushniki-i-garnitury",
+    "visible": true
+  },
+  {
+    "id": "sale",
+    "parent_id": null,
+    "label": "Акции и скидки",
+    "href": "/page/sale",
+    "visible": true
+  }
+]

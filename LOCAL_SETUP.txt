@@ -1,0 +1,81 @@
+TEXNO STORE: local Medusa development
+
+Location: commerce/
+Backend: Medusa 2.22.3, TypeScript / Node.js 24 in Docker.
+Admin: React / Vite, http://localhost:9000/app
+Storefront: Next.js 16.3.8 / React, http://localhost:8000
+Database: dedicated PostgreSQL 16 volume; application role is not a superuser.
+
+Start the existing local installation:
+  docker compose up -d postgres redis backend storefront
+
+Stop the installation while retaining data:
+  docker compose stop
+
+Status and logs:
+  docker compose ps
+  docker compose logs --tail 100 backend storefront
+
+After dependency changes, rebuild the application image:
+  docker compose build backend
+  docker compose up -d backend storefront
+
+Run new database migrations:
+  docker compose run --rm --no-deps backend pnpm exec medusa db:migrate
+
+Source directories are mounted for development:
+  apps/backend/src
+  apps/backend/medusa-config.ts
+  apps/storefront/src
+  apps/storefront/public
+Other configuration changes require rebuilding the image.
+
+Local account credentials: .local/admin-credentials.txt
+Secrets: .env (untracked and excluded from the image).
+The admin-setup service reads a local credential file without printing its password.
+It is intended for first account creation, not repeated password resets.
+
+Verified: backend health, admin page, administrator authentication/profile,
+storefront page, Store API regions/products, demo cart creation, changed-file lint.
+The starter contains four demo products. TEXNO STORE has not been imported.
+No live payment provider is configured. Local system/manual payment is demo setup.
+
+The source snapshot and PDFs remain in the parent workspace's research/ and output/.
+Seven official Medusa agent skills are installed at user scope:
+  building-with-medusa
+  building-admin-dashboard-customizations
+  building-storefronts
+  storefront-best-practices
+  db-generate
+  db-migrate
+  new-user
+They become available to Codex on the next turn.
+Source revision and verified file hashes: medusa-skills.lock.json.
+The official documentation MCP is not connected.
+Medusa Cloud CLI skills target Medusa's managed hosting service.
+Production deployment to the owner's server will use a separate self-hosted
+configuration; the current compose.yaml is for local development.
+
+TEXNO storefront and navigation:
+  Storefront: http://localhost:8000
+  Menu editor: http://localhost:9000/app/navigation
+  Menu items and contact links persist in the navigation module's PostgreSQL table.
+  Catalog has an editable navigation tree; product/category pages and functional
+  filters are not connected yet. Filter controls are disabled previews. Information links open
+  noindex placeholders until the next content stage. Demo commerce products remain
+  in the backend, but are not displayed on the new homepage.
+  Fresh database setup, after normal Medusa migrations:
+    docker compose exec backend pnpm exec medusa exec ./src/scripts/seed-navigation.ts
+  Import the saved source site's catalog tree into an existing empty menu:
+    docker compose exec backend pnpm exec medusa exec ./src/scripts/seed-catalog-navigation.ts
+  The seed is idempotent and does not overwrite saved menu changes.
+  Windows bind mounts use polling (Next dev --webpack, Vite, Chokidar) so source
+  changes are detected without rebuilding the image. Dependency changes still need:
+    docker compose up -d --build backend storefront
+  Build checks must use NODE_ENV=production for the storefront:
+    docker compose exec -e NODE_ENV=production storefront pnpm run build
+  Do not run build and dev against the same container while editing; use a separate
+  compose run container for build checks, or restart dev after building.
+Official references:
+  https://docs.medusajs.com/learn/introduction/build-with-llms-ai/agentic-skills
+  https://docs.medusajs.com/learn/introduction/build-with-llms-ai/mcp-server

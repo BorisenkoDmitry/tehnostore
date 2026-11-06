@@ -1,0 +1,75 @@
+# syntax=docker/dockerfile:1
+FROM node:24-alpine AS base
+RUN apk add --no-cache libc6-compat \
+  && corepack enable \
+  && corepack prepare pnpm@10.11.1 --activate
+WORKDIR /server
+ENV MEDUSA_DISABLE_TELEMETRY=true NEXT_TELEMETRY_DISABLED=1
+
+FROM base AS dependencies
+RUN apk add --no-cache python3 make g++ git
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/backend/package.json apps/backend/package.json
+COPY apps/storefront/package.json apps/storefront/package.json
+RUN --mount=type=cache,id=tehnostore-production-pnpm,target=/pnpm/store \
+  pnpm config set store-dir /pnpm/store \
+  && pnpm install --frozen-lockfile
+
+# Explicit source copies keep deployment credentials and local .env files out
+# of every image layer, independently of the development .dockerignore.
+FROM dependencies AS source
+COPY eslint.config.ts ./
+COPY apps/backend/src ./apps/backend/src
+COPY apps/backend/medusa-config.ts apps/backend/tsconfig.json apps/backend/instrumentation.ts apps/backend/eslint.config.ts ./apps/backend/
+COPY apps/storefront/src ./apps/storefront/src
+COPY apps/storefront/public ./apps/storefront/public
+COPY apps/storefront/check-env-variables.js apps/storefront/next-env.d.ts apps/storefront/next.config.js apps/storefront/postcss.config.js apps/storefront/tailwind.config.js apps/storefront/tsconfig.json apps/storefront/eslint.config.mjs ./apps/storefront/
+
+FROM source AS backend-build
+WORKDIR /server/apps/backend
+ARG NEXT_PUBLIC_MEDUSA_BACKEND_URL=https://tehnostore.dmitriy-borisenko.ru
+# These are compile-only placeholders. Runtime secrets come from Compose.
+RUN NODE_ENV=production \
+  JWT_SECRET=compile-only-placeholder-not-a-runtime-secret \
+  COOKIE_SECRET=compile-only-placeholder-not-a-runtime-secret \
+  DATABASE_URL=postgresql://compile:compile@localhost/compile?sslmode=disable \
+  STORE_CORS="$NEXT_PUBLIC_MEDUSA_BACKEND_URL" \
+  ADMIN_CORS="$NEXT_PUBLIC_MEDUSA_BACKEND_URL" \
+  AUTH_CORS="$NEXT_PUBLIC_MEDUSA_BACKEND_URL" \
+  VITE_BACKEND_URL="$NEXT_PUBLIC_MEDUSA_BACKEND_URL" \
+  pnpm exec medusa build
+RUN mkdir -p .medusa/server/static .medusa/server/uploads
+
+FROM base AS backend
+COPY --from=backend-build --chown=node:node /server /server
+ENV NODE_ENV=production
+WORKDIR /server/apps/backend/.medusa/server
+USER node
+EXPOSE 9000
+CMD ["node", "/server/apps/backend/node_modules/@medusajs/cli/cli.js", "start", "--host", "0.0.0.0"]
+
+FROM source AS storefront-build
+WORKDIR /server/apps/storefront
+ARG NEXT_PUBLIC_MEDUSA_BACKEND_URL=https://tehnostore.dmitriy-borisenko.ru
+ARG NEXT_PUBLIC_BASE_URL=https://tehnostore.dmitriy-borisenko.ru
+ARG NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
+ARG NEXT_PUBLIC_DEFAULT_REGION=dk
+ARG MEDUSA_BUILD_BACKEND_URL=http://host.docker.internal:9000
+ENV NODE_ENV=production \
+  NEXT_PUBLIC_MEDUSA_BACKEND_URL=$NEXT_PUBLIC_MEDUSA_BACKEND_URL \
+  NEXT_PUBLIC_BASE_URL=$NEXT_PUBLIC_BASE_URL \
+  NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=$NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY \
+  NEXT_PUBLIC_DEFAULT_REGION=$NEXT_PUBLIC_DEFAULT_REGION
+# Build requests need a real backend with restored regions/products/navigation.
+# This private endpoint is overridden to Docker DNS in the runtime stage.
+RUN MEDUSA_INTERNAL_BACKEND_URL="$MEDUSA_BUILD_BACKEND_URL" \
+  NODE_OPTIONS=--max-old-space-size=4096 \
+  pnpm run build
+
+FROM base AS storefront
+COPY --from=storefront-build --chown=node:node /server /server
+ENV NODE_ENV=production MEDUSA_INTERNAL_BACKEND_URL=http://backend:9000
+WORKDIR /server/apps/storefront
+USER node
+EXPOSE 8000
+CMD ["node", "node_modules/next/dist/bin/next", "start", "--hostname", "0.0.0.0", "--port", "8000"]

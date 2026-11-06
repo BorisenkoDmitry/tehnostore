@@ -46,8 +46,9 @@ const nextConfig = {
     },
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
+  experimental: { cpus: 2 },
   images: {
     unoptimized: true,
     remotePatterns: [

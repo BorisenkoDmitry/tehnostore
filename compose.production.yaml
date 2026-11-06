@@ -1,0 +1,151 @@
+name: tehnostore-production
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: texno_medusa
+      POSTGRES_USER: texno_bootstrap
+      POSTGRES_PASSWORD: ${POSTGRES_BOOTSTRAP_PASSWORD:?Set POSTGRES_BOOTSTRAP_PASSWORD}
+      MEDUSA_DB_PASSWORD: ${MEDUSA_DB_PASSWORD:?Set MEDUSA_DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-database.sh:/docker-entrypoint-initdb.d/10-medusa.sh:ro
+    networks: [private]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U texno_bootstrap -d texno_medusa"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    logging: *logging
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes:
+      - redis_data:/data
+    networks: [private]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: *logging
+
+  backend:
+    image: tehnostore-backend:${IMAGE_TAG:-production}
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      target: backend
+      args:
+        NEXT_PUBLIC_MEDUSA_BACKEND_URL: ${PUBLIC_URL:-https://tehnostore.dmitriy-borisenko.ru}
+    init: true
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      MEDUSA_DISABLE_TELEMETRY: "true"
+      DATABASE_URL: postgresql://medusa_app:${MEDUSA_DB_PASSWORD:?Set MEDUSA_DB_PASSWORD}@postgres:5432/texno_medusa?sslmode=disable
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
+      COOKIE_SECRET: ${COOKIE_SECRET:?Set COOKIE_SECRET}
+      STORE_CORS: ${PUBLIC_URL:-https://tehnostore.dmitriy-borisenko.ru}
+      ADMIN_CORS: ${PUBLIC_URL:-https://tehnostore.dmitriy-borisenko.ru}
+      AUTH_CORS: ${PUBLIC_URL:-https://tehnostore.dmitriy-borisenko.ru}
+    volumes:
+      - backend_static:/server/apps/backend/.medusa/server/static
+      - backend_uploads:/server/apps/backend/.medusa/server/uploads
+    ports:
+      - "127.0.0.1:${BACKEND_BOOTSTRAP_PORT:-9002}:9000"
+    networks: [private]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:9000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      start_period: 90s
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    logging: *logging
+
+  storefront:
+    image: tehnostore-storefront:${IMAGE_TAG:-production}
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      target: storefront
+      extra_hosts:
+        - "host.docker.internal:host-gateway"
+      args:
+        NEXT_PUBLIC_MEDUSA_BACKEND_URL: ${PUBLIC_URL:-https://tehnostore.dmitriy-borisenko.ru}
+        NEXT_PUBLIC_BASE_URL: ${PUBLIC_URL:-https://tehnostore.dmitriy-borisenko.ru}
+        NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY:?Set NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}
+        NEXT_PUBLIC_DEFAULT_REGION: ${NEXT_PUBLIC_DEFAULT_REGION:-dk}
+        MEDUSA_BUILD_BACKEND_URL: ${MEDUSA_BUILD_BACKEND_URL:-http://host.docker.internal:9000}
+    init: true
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      MEDUSA_INTERNAL_BACKEND_URL: http://backend:9000
+      NEXT_PUBLIC_MEDUSA_BACKEND_URL: ${PUBLIC_URL:-https://tehnostore.dmitriy-borisenko.ru}
+      NEXT_PUBLIC_BASE_URL: ${PUBLIC_URL:-https://tehnostore.dmitriy-borisenko.ru}
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY:?Set NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}
+      NEXT_PUBLIC_DEFAULT_REGION: ${NEXT_PUBLIC_DEFAULT_REGION:-dk}
+    networks: [private]
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      start_period: 60s
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    logging: *logging
+
+  gateway:
+    image: nginx:stable-alpine
+    restart: unless-stopped
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "127.0.0.1:${GATEWAY_DEBUG_PORT:-3108}:80"
+    networks:
+      private:
+      coolify:
+        aliases: [tehnostore-gateway]
+    depends_on:
+      backend:
+        condition: service_healthy
+      storefront:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/nginx-health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging: *logging
+
+networks:
+  private:
+  coolify:
+    external: true
+    name: coolify
+
+volumes:
+  postgres_data:
+  redis_data:
+  backend_static:
+  backend_uploads:

@@ -25,10 +25,16 @@
 - Backend/Admin: `pnpm --filter @dtc/backend build` и `pnpm --filter @dtc/backend lint`.
 - Storefront: `pnpm --filter @dtc/storefront build` и `pnpm --filter @dtc/storefront lint`.
 - Production-сборка Next проверяет TypeScript; ошибки типов не игнорируются.
-- `deploy/verify-storefront.js` — повторяемый сценарий для Playwright CLI `run-code`. Проверяет четыре слайда, размеры, мобильный попап, отзывы, маршруты и отсутствие автосмены во время непрерывной прокрутки с возобновлением после остановки.
+- `deploy/verify-storefront.js` — повторяемый сценарий для Playwright CLI `run-code`. Проверяет четыре слайда, размеры, мобильный попап, отзывы, маршруты мобильные отступы, штатную автопрокрутку Swiper и цикл после ручного выбора.
 
 ## Текущий этап
 
 Товары на главной и в `/catalog` — небольшой сохранённый набор для визуализации. Кнопка «Купить» открывает честный предпросмотр, реальное добавление этих позиций в корзину и онлайн-оплата ещё не подключены. Полный импорт InSales CSV, связь навигации с категориями и редактор HTML-контента — следующие этапы.
 
 Оформление описано в `DESIGN.md`. Промпты и пути иллюстраций сохранены в `hero-artwork-prompts.json` и `story-artwork-prompts.json`.
+
+## Hero slider
+
+Swiper React 14.4.0 provides gestures, looping, creative cover transitions, autoplay and accessibility. Only the required modules are imported. The former custom playback timer, swipe detection and scroll/touch scheduling are removed. Branded images, text, buttons and liquid selectors remain; device artwork is enlarged by 10%, with a static radial blue highlight. Mobile composition flows directly below the CTA instead of anchoring artwork to the bottom of a tall fixed hero.
+
+All four panels and titles are in server HTML, with a single page H1. The first responsive WebP loads eagerly; remaining artwork uses native lazy loading. Reduced motion disables autoplay and transition duration. Reference: https://swiperjs.com/react

@@ -36,6 +36,7 @@
     "react-dom": "19.0.5",
     "react-instantsearch": "^7.46.0",
     "server-only": "^0.0.1",
+    "swiper": "14.4.0",
     "tailwindcss-radix": "^2.8.0"
   },
   "devDependencies": {

@@ -140,21 +140,10 @@
   .texno-shell *, .texno-shell *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }
 
-/* A CSS wave covers the previous slide; no per-frame JavaScript mask updates. */
+/* Shared slide typography and branded selector; Swiper owns transitions. */
 .texno-carousel { display: block; touch-action: pan-y; }
 .texno-slide { position: absolute; inset: 0; z-index: 0; display: flex; align-items: center; visibility: hidden; isolation: isolate; background: var(--texno-blue); }
 .texno-slide.is-active { z-index: 2; visibility: visible; }
-.texno-slide.is-previous { z-index: 1; visibility: visible; }
-.texno-slide.is-entering { animation: texno-wave-cover 760ms 120ms var(--texno-ease) both; }
-.texno-slide.is-entering .texno-hero-artwork { animation: texno-artwork-arrive 760ms 120ms var(--texno-ease) both; }
-.texno-slide.is-entering .texno-hero-content { animation: texno-story-arrive 600ms 220ms var(--texno-ease) both; }
-@keyframes texno-wave-cover {
-  from { clip-path: ellipse(115% 85% at 50% 185%); }
-  40% { clip-path: ellipse(115% 105% at 50% 125%); }
-  to { clip-path: ellipse(115% 160% at 50% 40%); }
-}
-@keyframes texno-artwork-arrive { from { transform: translateY(28px); } to { transform: translateY(0); } }
-@keyframes texno-story-arrive { from { transform: translateY(18px); opacity: .4; } to { transform: translateY(0); opacity: 1; } }
 .texno-slide > picture { position: absolute; inset: 0; display: block; }
 .texno-slide-title { font-size: clamp(44px, 4.55cqw, 80px); line-height: 1.08; font-weight: 500; letter-spacing: -.035em; text-wrap: balance; }
 .texno-slide p { white-space: pre-line; }
@@ -653,4 +642,22 @@ body:has(.texno-product-dialog[open]) { overflow: hidden; }
 }
 @container storefront (max-width: 350px) {
   .texno-slide > .texno-hero-artwork { top: 430px; }
+}
+
+
+/* Swiper owns the slide transforms, gestures and autoplay; retain our branding. */
+.texno-hero-swiper { width: 100%; height: 100%; min-width: 0; }
+.texno-hero-swiper .texno-slide { display: flex; align-items: center; position: relative; inset: auto; height: 100%; flex-shrink: 0; visibility: visible; z-index: auto; background: radial-gradient(ellipse 48% 66% at 75% 62%, #388bd8 0%, #1876ca 45%, var(--texno-blue) 100%); }
+.texno-hero-swiper .texno-hero-image { transform: scale(1.1); }
+@container storefront (max-width: 600px) {
+  .texno-carousel { height: auto; min-height: 0; max-height: none; }
+  .texno-hero-swiper { height: auto; }
+  .texno-hero-swiper .swiper-wrapper { align-items: stretch; }
+  .texno-hero-swiper .texno-slide { display: flex; flex-direction: column; align-items: stretch; height: auto; background: radial-gradient(ellipse 80% 45% at 50% 72%, #388bd8 0%, #1876ca 45%, var(--texno-blue) 100%); }
+  .texno-hero-swiper .texno-hero-inner { order: 1; }
+  .texno-hero-swiper .texno-slide > .texno-hero-artwork { position: relative; inset: auto; order: 2; flex: 0 0 auto; width: calc(100% - var(--texno-gutter) * 2); height: clamp(250px, 78cqw, 360px); margin: 24px auto 76px; }
+  .texno-hero-swiper .texno-hero-artwork .texno-hero-image { object-position: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .texno-hero-swiper .swiper-wrapper, .texno-hero-swiper .swiper-slide { transition-duration: 0ms !important; }
 }

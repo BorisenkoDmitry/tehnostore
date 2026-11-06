@@ -15,7 +15,8 @@ async page => {
   await page.evaluate(() => scrollTo(0, 0))
   for (let index = 0; index < 4; index++) {
     await page.locator(".texno-slide-controls button").nth(index).click()
-    await page.waitForSelector(`#hero-slide-${index}.is-active:not(.is-entering)`)
+    await page.waitForSelector(`#hero-slide-${index}.is-active`)
+    await page.waitForFunction(() => !document.querySelector(".texno-hero-swiper").swiper.animating)
     const bounds = await page.locator(`#hero-slide-${index}`).evaluate((slide) => {
       const artwork = slide.querySelector("picture").getBoundingClientRect()
       const header = document.querySelector(".texno-header").getBoundingClientRect()
@@ -67,21 +68,27 @@ async page => {
   results.responsiveMenusAndFocus = "passed"
   await page.setViewportSize({ width: 390, height: 844 })
 
+  for (let index = 0; index < 4; index++) {
+    await page.locator(".texno-slide-controls button").nth(index).click()
+    await page.waitForSelector(`#hero-slide-${index}.is-active`)
+    await page.waitForFunction(() => !document.querySelector(".texno-hero-swiper").swiper.animating)
+    const gap = await page.locator(`#hero-slide-${index}`).evaluate((slide) => {
+      const artwork = slide.querySelector("picture").getBoundingClientRect()
+      const button = slide.querySelector(".texno-primary-button").getBoundingClientRect()
+      return artwork.top - button.bottom
+    })
+    check(gap >= 0 && gap <= 36, `Mobile artwork has an excessive gap on slide ${index}: ${gap}`)
+  }
+  results.mobileComposition = "passed"
   await page.evaluate(() => scrollTo(0, 0))
   await page.locator(".texno-slide-controls button").first().click()
-  await page.waitForSelector("#hero-slide-0.is-active:not(.is-entering)")
-  await page.evaluate(async () => {
-    const start = performance.now()
-    await new Promise((resolve) => {
-      const timer = setInterval(() => {
-        scrollTo(0, 100 + Math.sin((performance.now() - start) / 100) * 60)
-        if (performance.now() - start >= 8200) { clearInterval(timer); resolve() }
-      }, 100)
-    })
-  })
-  check(await currentSlide() === "hero-slide-0", "Autoplay interrupted continuous scrolling")
-  await page.waitForSelector("#hero-slide-1.is-active", { timeout: 3000 })
-  results.scrollAwareAutoplay = "passed"
+  await page.waitForSelector("#hero-slide-0.is-active")
+  await page.waitForSelector("#hero-slide-1.is-active", { timeout: 10000 })
+  check(await page.locator(".texno-hero-swiper").evaluate((element) => element.swiper.autoplay.running), "Swiper autoplay stopped")
+  await page.locator(".texno-slide-controls button").last().click()
+  await page.waitForSelector("#hero-slide-3.is-active")
+  await page.waitForSelector("#hero-slide-0.is-active", { timeout: 10000 })
+  results.nativeAutoplayAndLoop = "passed"
 
   for (const [path, selector, expected] of [
     ["/se/catalog", ".texno-product-card", 6],

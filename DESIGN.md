@@ -66,3 +66,8 @@ Latest shared button behavior: hero and cart CTA use the StoreButton component. 
 ## Released hero implementation (6 November 2026)
 
 The current hero supersedes the earlier full-frame backgrounds: transparent WebP device-and-podium cutouts sit over CSS backgrounds. Desktop art stays below the fixed header and beside the copy; responsive mobile cutouts use separate 800px assets. A CSS ellipse reveal replaces the old per-frame SVG mask. Seven-second autoplay waits until scroll/touch activity settles and does not update React state on scroll. The sticky header uses an intersection observer and an opaque/translucent color without backdrop blur.
+
+
+## Swiper replacement supersedes the custom hero engine
+
+Swiper React supplies the upward cover transition and autoplay. No custom slide timers, swipe recognition or window-scroll/touch scheduling remain. The liquid selector retains its visual CSS animation but sends navigation requests to Swiper. Desktop alignment is explicitly scoped to prevent core Swiper display rules from replacing the original flex centering. Artwork scale is 1.1 and a static radial blue highlight sits behind it. Mobile slides use content flow: text/CTA first, 24px gap, artwork, 76px space for the selector. Original colors, typography, shared container and CTA labels are retained.

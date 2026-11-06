@@ -1,0 +1,23 @@
+http:
+  routers:
+    tehnostore-http:
+      rule: Host(`tehnostore.dmitriy-borisenko.ru`)
+      entryPoints: [http]
+      middlewares: [tehnostore-redirect]
+      service: tehnostore
+    tehnostore-https:
+      rule: Host(`tehnostore.dmitriy-borisenko.ru`)
+      entryPoints: [https]
+      service: tehnostore
+      tls:
+        certResolver: letsencrypt
+  middlewares:
+    tehnostore-redirect:
+      redirectScheme:
+        scheme: https
+        permanent: true
+  services:
+    tehnostore:
+      loadBalancer:
+        servers:
+          - url: http://tehnostore-gateway:80

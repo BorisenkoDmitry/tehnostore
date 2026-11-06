@@ -101,12 +101,18 @@ export default function StorefrontShell({ navigation, cartCount, children }: {
     }
     requestAnimationFrame(() => target?.focus({ preventScroll: true }))
   }
-  const closeCatalog = () => { setCatalogOpen(false); restoreFocus() }
-  const closeMobileMenu = () => { setMobileMenuOpen(false); restoreFocus() }
-  const openMobileMenu = () => { setCatalogOpen(false); setContactOpen(false); setMobileMenuOpen(true) }
+  // Release the outgoing control before its ancestor becomes aria-hidden/inert.
+  // The destination panel receives focus after React commits its visible state.
+  const releaseFocus = () => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+  }
+  const closeCatalog = () => { releaseFocus(); setCatalogOpen(false); restoreFocus() }
+  const closeMobileMenu = () => { releaseFocus(); setMobileMenuOpen(false); restoreFocus() }
+  const openMobileMenu = () => { releaseFocus(); setCatalogOpen(false); setContactOpen(false); setMobileMenuOpen(true) }
   const openCatalog = () => {
     hideNavDot()
     catalogReturn.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    releaseFocus()
     catalogFocusPending.current = false
     setDesktopMenuReady(false)
     setContactOpen(false)
@@ -187,6 +193,7 @@ export default function StorefrontShell({ navigation, cartCount, children }: {
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return
+      if (catalogOpen || mobileMenuOpen) releaseFocus()
       if (catalogOpen) {
         setCatalogOpen(false)
         if (!compact && catalogReturn.current?.closest(".texno-desktop-nav")) catalogFocusPending.current = true

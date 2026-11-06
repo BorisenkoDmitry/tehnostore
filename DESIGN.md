@@ -61,3 +61,8 @@ Product preview dialog actions: below the existing preview notice, Go to cart li
 Latest preview action styling supersedes the blue-button draft: both actions sit in one horizontal flex row. Go to cart reuses texno-primary-button, including the hero dark background, white pointer-origin circular hover fill and optical label alignment. Continue shopping remains background-free and closes the dialog. Secondary text may wrap on narrow phones to keep both actions inside the same row without overflow.
 
 Latest shared button behavior: hero and cart CTA use the StoreButton component. The cart CTA has a cobalt circular fill and white text, while the hero retains its light fill. The circle diameter is calculated to reach every corner from the pointer entry point; the underlying hover background takes the fill color after the reveal to avoid dark edge remnants. Popup actions remain in one row above 400px viewport width, and stack at full width at 400px and below. Browser checks at 401, 400, 375 and 320px confirmed the breakpoint and no action-row overflow; blue hover background, fill and white label were verified.
+
+
+## Released hero implementation (6 November 2026)
+
+The current hero supersedes the earlier full-frame backgrounds: transparent WebP device-and-podium cutouts sit over CSS backgrounds. Desktop art stays below the fixed header and beside the copy; responsive mobile cutouts use separate 800px assets. A CSS ellipse reveal replaces the old per-frame SVG mask. Seven-second autoplay waits until scroll/touch activity settles and does not update React state on scroll. The sticky header uses an intersection observer and an opaque/translucent color without backdrop blur.

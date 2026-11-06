@@ -4,6 +4,11 @@ async page => {
   const currentSlide = () => page.locator(".texno-slide.is-active").getAttribute("id")
   const check = (condition, message) => { if (!condition) throw new Error(message) }
   const results = {}
+  const accessibilityWarnings = []
+  const onConsole = (message) => {
+    if (message.type() === "warning" && message.text().includes("Blocked aria-hidden")) accessibilityWarnings.push(message.text())
+  }
+  page.on("console", onConsole)
 
   await navigateHome()
   await page.setViewportSize({ width: 1440, height: 1000 })
@@ -43,6 +48,25 @@ async page => {
   check((await page.getByRole("link", { name: "Все отзывы", exact: true }).getAttribute("href")).endsWith("/page/reviews"), "All reviews does not link to its page")
   results.reviews = "passed"
 
+  for (const width of [390, 1024]) {
+    await page.setViewportSize({ width, height: 844 })
+    await page.getByRole("button", { name: "Открыть меню", exact: true }).click()
+    await page.locator("#mobile-navigation").getByRole("button", { name: /Каталог/ }).click()
+    await page.waitForTimeout(600)
+    const menuState = await page.evaluate(() => ({
+      menuHidden: document.querySelector("#mobile-navigation").getAttribute("aria-hidden") === "true",
+      catalogWidth: document.querySelector("#catalog-panel").getBoundingClientRect().width,
+      overflow: document.documentElement.scrollWidth > innerWidth,
+    }))
+    check(menuState.menuHidden && Math.abs(menuState.catalogWidth - width) < 1 && !menuState.overflow, `Fullscreen catalog failed at ${width}px`)
+    await page.keyboard.press("Escape")
+    await page.waitForTimeout(200)
+    check(await page.getByRole("button", { name: "Открыть меню", exact: true }).evaluate((button) => document.activeElement === button), "Menu focus did not return after Escape")
+  }
+  check(accessibilityWarnings.length === 0, "Focus remained inside an aria-hidden menu")
+  results.responsiveMenusAndFocus = "passed"
+  await page.setViewportSize({ width: 390, height: 844 })
+
   await page.evaluate(() => scrollTo(0, 0))
   await page.locator(".texno-slide-controls button").first().click()
   await page.waitForSelector("#hero-slide-0.is-active:not(.is-entering)")
@@ -69,5 +93,6 @@ async page => {
   }
   results.routes = "passed"
   await navigateHome()
+  page.off("console", onConsole)
   return results
 }

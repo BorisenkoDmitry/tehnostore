@@ -14,11 +14,16 @@ services:
   storefront:
     build:
       network: host
+      entitlements:
+        - network.host
 ```
 
 ```sh
-COMPOSE_PARALLEL_LIMIT=1 docker compose --env-file .env.production.local \
-  -f compose.production.yaml -f /tmp/tehnostore-build.override.yaml build storefront
+docker compose --env-file .env.production.local \
+  -f compose.production.yaml -f /tmp/tehnostore-build.override.yaml \
+  build --print storefront > /tmp/tehnostore-storefront-bake.json
+docker buildx bake --allow=network.host --allow=fs.read="$PWD" \
+  -f /tmp/tehnostore-storefront-bake.json --load storefront
 docker compose --env-file .env.production.local -f compose.production.yaml up -d --no-build
 ```
 

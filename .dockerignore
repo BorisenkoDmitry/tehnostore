@@ -10,5 +10,10 @@
 **/.env.local
 .env.compose
 .local
+output/
+.playwright-cli/
+**/.playwright-cli/
+/apps/private-files/
+/apps/backend/private-files/
 *.log
 coverage

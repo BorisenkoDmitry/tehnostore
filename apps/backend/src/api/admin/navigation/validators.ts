@@ -12,6 +12,8 @@ const CatalogNodeSchema = z.object({
   label: z.string().trim().min(1).max(100),
   href: safeHref,
   visible: z.boolean(),
+  category_id: z.string().min(1).max(100).optional(),
+  category_shortcut: z.boolean().optional(),
 })
 
 const CatalogTreeSchema = z.array(CatalogNodeSchema).max(1000).refine((nodes) => {
@@ -42,14 +44,15 @@ export const NavigationItemSchema = z.object({
 })
 
 export const UpdateNavigationSchema = z.object({
+  expected_updated_at: z.string().max(60).optional(),
   items: z.array(NavigationItemSchema).max(20)
     .refine((items) => new Set(items.map((item) => item.id)).size === items.length, "Повторяются ID пунктов")
     .refine((items) => items.filter((item) => item.kind === "catalog").length <= 1, "Допустим один каталог"),
-  phone: z.string().trim().regex(/^\+?[\d\s()\-]{7,30}$/, "Проверьте номер телефона"),
-  telegram_url: z.string().url().refine(
+  phone: z.union([z.literal(""), z.string().trim().regex(/^\+?[\d\s()\-]{7,30}$/, "Проверьте номер телефона")]),
+  telegram_url: z.union([z.literal(""), z.string().url().refine(
     (value) => /^https:\/\/t\.me\/[A-Za-z0-9_]+\/?$/.test(value),
     "Укажите ссылку https://t.me/имя"
-  ),
+  )]),
 })
 
 export type NavigationInput = z.infer<typeof UpdateNavigationSchema>

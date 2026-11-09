@@ -20,11 +20,13 @@ export const buildProductStructuredData = ({
   region,
   countryCode,
   productUrl,
+  storeName = STORE_NAME,
 }: {
   product: HttpTypes.StoreProduct
   region: HttpTypes.StoreRegion
   countryCode: string
   productUrl: string
+  storeName?: string
 }) => {
   const currency = region.currency_code.toUpperCase()
   const images = (product.images ?? [])
@@ -34,7 +36,7 @@ export const buildProductStructuredData = ({
     images.push(product.thumbnail)
   }
   const description = product.description || product.title
-  const brand = { "@type": "Brand", name: STORE_NAME }
+  const brand = { "@type": "Brand", name: String(product.metadata?.catalog_brand || product.metadata?.insales_brand || storeName) }
   const policies = getRegionPolicies(region)
   const optionTitles = new Map(
     (product.options ?? []).map((option) => [option.id, option.title])

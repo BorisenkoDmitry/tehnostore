@@ -1,7 +1,9 @@
 import "server-only"
 import { headers } from "next/headers"
+import { getSiteSettings } from "@lib/data/content"
 
-export const STORE_NAME = "TEXNO STORE"
+export const STORE_NAME = "Магазин"
+export const getStoreName = async () => (await getSiteSettings()).brand?.name || STORE_NAME
 
 export const DEFAULT_COUNTRY_CODE = (
   process.env.NEXT_PUBLIC_DEFAULT_REGION || "dk"

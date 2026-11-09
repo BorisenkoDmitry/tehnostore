@@ -523,6 +523,11 @@ body:has(.texno-product-dialog[open]) { overflow: hidden; }
 .texno-rich-content ol { list-style: decimal; }
 .texno-rich-content a { color: var(--texno-blue); text-decoration: underline; text-underline-offset: 3px; }
 .texno-rich-content > :last-child { margin-bottom: 0; }
+.texno-category-text { margin-top: 48px; overflow-x: auto; }
+.texno-category-text table { width: 100%; margin-block: 20px; border-collapse: collapse; }
+.texno-category-text :is(th, td) { padding: 8px 12px; border: 1px solid #e6edf3; text-align: left; }
+.texno-category-text :is(th, td) p { margin: 0; }
+.texno-category-text blockquote { margin: 20px 0; padding-left: 16px; border-left: 2px solid #e6edf3; }
 .texno-story-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px clamp(28px, 5cqw, 72px); align-items: center; }
 .texno-story-row + .texno-story-row { margin-top: 64px; }
 .texno-story-row > h1, .texno-story-row > h2 { grid-column: 1 / -1; max-width: none; margin: 0; }
@@ -536,7 +541,13 @@ body:has(.texno-product-dialog[open]) { overflow: hidden; }
 .texno-story-row.has-artwork:nth-child(even) figure { grid-column: 1; grid-row: 2; }
 .texno-story-row.is-text-only { align-items: start; padding-top: 44px; border-top: 1px solid #e6edf3; }
 .texno-story-row.is-text-only > h2 { grid-column: 1; }
+.texno-home-story-tiles { --texno-home-story-gap: clamp(32px, 5cqw, 72px); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--texno-home-story-gap); margin-top: 64px; }
+.texno-home-story-tile { position: relative; min-width: 0; }
+.texno-home-story-tile + .texno-home-story-tile::before { content: ""; position: absolute; top: 0; bottom: 0; left: calc(var(--texno-home-story-gap) / -2); width: 1px; background: #e6edf3; }
+.texno-rich-content .texno-home-story-tile > h2 { max-width: none; margin: 0 0 24px; font-size: clamp(24px, 2.2cqw, 32px); text-wrap: balance; }
 @container storefront (max-width: 900px) {
+  .texno-home-story-tiles { --texno-home-story-gap: 48px; grid-template-columns: 1fr; margin-top: 40px; }
+  .texno-home-story-tile + .texno-home-story-tile::before { top: calc(var(--texno-home-story-gap) / -2); bottom: auto; left: 0; width: 100%; height: 1px; }
   .texno-story-row { grid-template-columns: 1fr; }
   .texno-story-row.has-artwork:nth-child(even) .texno-story-row-copy, .texno-story-row.has-artwork:nth-child(even) figure { grid-column: auto; grid-row: auto; }
   .texno-story-row figure { align-self: auto; }
@@ -554,7 +565,6 @@ body:has(.texno-product-dialog[open]) { overflow: hidden; }
 .texno-review-stars svg.is-filled { fill: var(--texno-blue); }
 .texno-review-card blockquote { margin: 18px 0 0; color: #3f5061; font-size: 15px; line-height: 1.8; white-space: pre-line; }
 .texno-all-reviews { display: flex; justify-content: center; margin-top: 32px; }
-.texno-reviews-page .texno-section-heading { margin-top: 28px; }
 .texno-catalog-preview { padding-top: 36px; min-height: 65svh; }
 .texno-catalog-preview .texno-section-heading { margin-top: 28px; }
 /* Horizontal liquid selector, aligned with the common left content edge. */
@@ -646,14 +656,34 @@ body:has(.texno-product-dialog[open]) { overflow: hidden; }
 
 
 /* Swiper owns the slide transforms, gestures and autoplay; retain our branding. */
+.texno-hero.texno-carousel { background: radial-gradient(ellipse 48% 66% at 75% 62%, #388bd8 0%, #1876ca 45%, var(--texno-blue) 100%); }
+.texno-hero-relief { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; -webkit-mask-image: linear-gradient(90deg, transparent 36%, #000 67%), linear-gradient(0deg, #000, transparent 38%); mask-image: linear-gradient(90deg, transparent 36%, #000 67%), linear-gradient(0deg, #000, transparent 38%); }
 .texno-hero-swiper { width: 100%; height: 100%; min-width: 0; }
-.texno-hero-swiper .texno-slide { display: flex; align-items: center; position: relative; inset: auto; height: 100%; flex-shrink: 0; visibility: visible; z-index: auto; background: radial-gradient(ellipse 48% 66% at 75% 62%, #388bd8 0%, #1876ca 45%, var(--texno-blue) 100%); }
+.texno-hero-swiper .texno-slide { display: flex; align-items: center; position: relative; inset: auto; height: 100%; flex-shrink: 0; visibility: visible; z-index: auto; background: transparent; }
 .texno-hero-swiper .texno-hero-image { transform: scale(1.1); }
+.texno-hero-liquid { position: absolute; inset: 0; width: 100%; height: 100%; transform: scale(1.1); pointer-events: none; }
+.texno-hero-liquid-rings { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none; }
+.texno-hero-liquid-rings circle { fill: none; stroke: #a3e0ff; stroke-width: .2; transform-origin: 49% 52%; }
+.texno-hero-artwork[data-liquid-active="true"] > .texno-hero-image { opacity: 0; }
+@media (width > 2000px) {
+  .texno-hero.texno-carousel { height: min(100svh, 900px); max-height: 900px; }
+}
+/* Keep the default/SSR state readable. The controller gates only incoming layers. */
+.texno-hero-line-mask { display: block; }
+.texno-hero-line-mask > span { display: block; transform-origin: left bottom; }
+@media (prefers-reduced-motion: no-preference) {
+  .texno-slide[data-hero-pending="true"] .texno-hero-line-mask > span,
+  .texno-slide[data-hero-pending="true"] .texno-hero-description,
+  .texno-slide[data-hero-pending="true"] .texno-hero-action,
+  .texno-slide[data-hero-pending="true"] .texno-hero-artwork { opacity: 0; }
+}
 @container storefront (max-width: 600px) {
   .texno-carousel { height: auto; min-height: 0; max-height: none; }
   .texno-hero-swiper { height: auto; }
   .texno-hero-swiper .swiper-wrapper { align-items: stretch; }
-  .texno-hero-swiper .texno-slide { display: flex; flex-direction: column; align-items: stretch; height: auto; background: radial-gradient(ellipse 80% 45% at 50% 72%, #388bd8 0%, #1876ca 45%, var(--texno-blue) 100%); }
+  .texno-hero.texno-carousel { background: radial-gradient(ellipse 80% 45% at 50% 72%, #388bd8 0%, #1876ca 45%, var(--texno-blue) 100%); }
+  .texno-hero-relief { top: 30%; left: -90%; width: 190%; height: 78%; opacity: .65; -webkit-mask-image: linear-gradient(transparent, #000 25%); mask-image: linear-gradient(transparent, #000 25%); }
+  .texno-hero-swiper .texno-slide { display: flex; flex-direction: column; align-items: stretch; height: auto; }
   .texno-hero-swiper .texno-hero-inner { order: 1; }
   .texno-hero-swiper .texno-slide > .texno-hero-artwork { position: relative; inset: auto; order: 2; flex: 0 0 auto; width: calc(100% - var(--texno-gutter) * 2); height: clamp(250px, 78cqw, 360px); margin: 24px auto 76px; }
   .texno-hero-swiper .texno-hero-artwork .texno-hero-image { object-position: center; }

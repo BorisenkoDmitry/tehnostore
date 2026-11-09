@@ -1,0 +1,25 @@
+diff --git a/dist/utils/workflow-orchestrator-storage.js b/dist/utils/workflow-orchestrator-storage.js
+--- a/dist/utils/workflow-orchestrator-storage.js
++++ b/dist/utils/workflow-orchestrator-storage.js
+@@ -151,7 +151,7 @@
+             if (step.id === "_root") {
+                 break;
+             }
+-            const isTargetState = targetStates.has(step.invoke?.state);
++            const isTargetState = targetStates.has((isFlowInvoking ? step.invoke : step.compensate)?.state);
+             if (isTargetState && !currentStep) {
+                 currentStep = step;
+                 break;
+@@ -170,7 +170,11 @@
+                 }
+             }
+         }
+-        if (!(isNotStarted || isFinished || isWaitingToCompensate) &&
++        // A synchronous inverse can commit before a process dies. Persist
++        // every compensation transition of an explicitly stored workflow,
++        // including native child-as-step definitions whose store is false.
++        const isCompensating = data.flow.state === utils_1.TransactionState.COMPENSATING;
++        if (!(isNotStarted || isFinished || isWaitingToCompensate || isCompensating) &&
+             !shouldStoreCurrentSteps &&
+             !asyncVersion) {
+             return;

@@ -1,0 +1,12 @@
+{
+  "purpose": "Dedicated illustrative product composition for About. Not specific SKU documentation or actual store premises.",
+  "generator": "Native ImageGen",
+  "src": "/images/about/about-artwork.webp",
+  "mobile_src": "/images/about/about-artwork-mobile.webp",
+  "transparent_background": true,
+  "prompt": "Premium photorealistic editorial electronics cutout with true transparent alpha. Exactly one satin silver/graphite smartphone at an elegant diagonal in three-quarter perspective, open white wireless earbud case, and white braided USB-C cable forming a relaxed loop. All objects inside a 4:3 canvas. Cool daylight, subtle blue edge reflections to sit on the store code background #0964bd. Natural semi-transparent contact shadows. No repeated phone, podiums, plinths, text, logos, UI, people or premises.",
+  "story": {
+    "src": "/images/about/about-story.webp",
+    "prompt": "Tack-sharp overhead flat-lay panoramic electronics photograph on light powder blue. One graphite smartphone face up with an abstract cobalt screen, charcoal over-ear headphones, white USB-C charger and folded cable. All objects in focus. No earbuds or earbud case, no upright phones, podiums, rolled paper or cleaning cloth. No people, premises, logos, text or UI."
+  }
+}

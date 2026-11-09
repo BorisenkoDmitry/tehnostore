@@ -1,74 +1,15 @@
 "use client"
-
-import React, { useEffect, useActionState } from "react";
-
-import Input from "@modules/common/components/input"
-
-import AccountInfo from "../account-info"
+import { useActionState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { HttpTypes } from "@medusajs/types"
-import { updateCustomer } from "@lib/data/customer"
-
-type MyInformationProps = {
-  customer: HttpTypes.StoreCustomer
+import { updateCustomerProfilePhone } from "@lib/data/customer"
+import Input from "@modules/common/components/input"
+import AccountInfo from "../account-info"
+import { safeAccountAction } from "../../lib/actions"
+const ProfilePhone = ({ customer }: { customer: HttpTypes.StoreCustomer }) => {
+  const [state, action] = useActionState(safeAccountAction(updateCustomerProfilePhone, { success: false, error: "Связь прервалась. Проверьте интернет и повторите сохранение." }), { success: false, error: null as string | null })
+  const router = useRouter()
+  useEffect(() => { if (state.success) router.refresh() }, [state, router])
+  return <form action={action} className="w-full"><AccountInfo label="Телефон" currentInfo={customer.phone || "Не указан"} isSuccess={state.success} isError={Boolean(state.error)} errorMessage={state.error ?? undefined} clearState={() => {}} data-testid="account-phone-editor"><Input label="Телефон" name="phone" type="tel" autoComplete="tel" maxLength={30} defaultValue={customer.phone ?? ""} data-testid="phone-input" /></AccountInfo></form>
 }
-
-const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
-  const [successState, setSuccessState] = React.useState(false)
-
-  const updateCustomerPhone = async (
-    _currentState: Record<string, unknown>,
-    formData: FormData
-  ) => {
-    const customer = {
-      phone: formData.get("phone") as string,
-    }
-
-    try {
-      await updateCustomer(customer)
-      return { success: true, error: null }
-    } catch (error) {
-      return { success: false, error: String(error) }
-    }
-  }
-
-  const [state, formAction] = useActionState(updateCustomerPhone, {
-    error: null as string | null,
-    success: false,
-  })
-
-  const clearState = () => {
-    setSuccessState(false)
-  }
-
-  useEffect(() => {
-    setSuccessState(state.success)
-  }, [state])
-
-  return (
-    <form action={formAction} className="w-full">
-      <AccountInfo
-        label="Phone"
-        currentInfo={`${customer.phone}`}
-        isSuccess={successState}
-        isError={!!state.error}
-        errorMessage={state.error || undefined}
-        clearState={clearState}
-        data-testid="account-phone-editor"
-      >
-        <div className="grid grid-cols-1 gap-y-2">
-          <Input
-            label="Phone"
-            name="phone"
-            type="phone"
-            autoComplete="phone"
-            required
-            defaultValue={customer.phone ?? ""}
-            data-testid="phone-input"
-          />
-        </div>
-      </AccountInfo>
-    </form>
-  )
-}
-
-export default ProfileEmail
+export default ProfilePhone

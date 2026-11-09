@@ -1,16 +1,12 @@
 import { sdk } from "@lib/config"
 import { listRegions } from "@lib/data/regions"
 import { getSiteOrigin, listCountryCodes } from "@lib/util/site"
+import { getContentPages } from "@lib/data/content"
+import { getCatalogConfig } from "@lib/data/catalog"
 import type { MetadataRoute } from "next"
 
 const STATIC_PATHS = [
-  "",
   "/store",
-  "/shipping",
-  "/returns",
-  "/terms",
-  "/privacy",
-  "/contact",
 ]
 const PAGE_SIZE = 200
 
@@ -27,12 +23,12 @@ async function listAll<T>(fetchPage: (offset: number) => Promise<Page<T>>) {
   }
 }
 
-type Entry = { handle?: string | null; updated_at?: string | Date | null }
+type Entry = { handle?: string | null; updated_at?: string | Date | null; metadata?: Record<string, unknown> | null }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const query = { fields: "handle,updated_at", limit: PAGE_SIZE }
+  const query = { fields: "handle,updated_at,metadata", limit: PAGE_SIZE }
 
-  const [origin, regions, products, categories, collections] = await Promise.all([
+  const [origin, regions, products, config, pages] = await Promise.all([
     getSiteOrigin(),
     listRegions(),
     listAll<Entry>((offset) =>
@@ -40,16 +36,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .list({ ...query, offset })
         .then((res) => ({ items: res.products, count: res.count }))
     ),
-    listAll<Entry>((offset) =>
-      sdk.store.category
-        .list({ ...query, offset })
-        .then((res) => ({ items: res.product_categories, count: res.count }))
-    ),
-    listAll<Entry>((offset) =>
-      sdk.store.collection
-        .list({ ...query, offset })
-        .then((res) => ({ items: res.collections, count: res.count }))
-    ),
+    getCatalogConfig(), getContentPages(),
   ])
 
   const toEntries = (base: string, prefix: string, items: Entry[]) =>
@@ -64,9 +51,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const base = `${origin}/${countryCode}`
     return [
       ...STATIC_PATHS.map((path) => ({ url: `${base}${path}` })),
-      ...toEntries(base, "products", products),
-      ...toEntries(base, "categories", categories),
-      ...toEntries(base, "collections", collections),
+      ...pages.filter((page) => !page.metadata.noindex).map((page) => ({ url: page.slug === "home" ? base : `${base}/page/${page.slug}`, lastModified: page.published_at ? new Date(page.published_at) : undefined })),
+      ...toEntries(base, "products", products.filter((product) => product.metadata?.catalog_scope === config?.scope)),
+      ...(config?.categories ?? []).map((category) => ({ url: `${base}/store?category=${encodeURIComponent(category.handle)}` })),
     ]
   })
 }

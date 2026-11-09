@@ -1,0 +1,9 @@
+{
+  "purpose": "Second, redesigned illustrative delivery composition: slim sealed white mailer and smartphone on protective foam. Not store documentary photography or a product SKU.",
+  "generator": "Native ImageGen",
+  "src": "/images/delivery/delivery-packaging.webp",
+  "mobile_src": "/images/delivery/delivery-packaging-mobile.webp",
+  "transparent_background": true,
+  "prompt": "New premium photorealistic studio still life on transparent alpha, landscape 4:3: one compact closed low-profile ice-white protective postal mailer with straight folded edges, flush tuck closure and a narrow azure tamper seal. One realistic tall narrow silver smartphone, dark switched-off screen with subtle blue studio reflection, rests diagonally on a small neatly cut white fine-cell protective foam pad in the foreground. Coherent three-quarter view, all items rest on the same plane with subtle contact shadows. Precise paper, metal and glass geometry, sharp focus throughout. No brown cardboard, open carton, oversized box, cables, podium, logos, shipping labels, text, people or premises.",
+  "dimensions": { "desktop": [1400, 1050], "mobile": [800, 600] }
+}

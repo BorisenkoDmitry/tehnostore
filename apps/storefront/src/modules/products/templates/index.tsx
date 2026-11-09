@@ -1,14 +1,12 @@
-import React, { Suspense } from "react"
-
-import VariantImageGallery from "@modules/products/components/image-gallery/variant-image-gallery"
-import ProductActions from "@modules/products/components/product-actions"
-import ProductOnboardingCta from "@modules/products/components/product-onboarding-cta"
-import ProductTabs from "@modules/products/components/product-tabs"
-import RelatedProducts from "@modules/products/components/related-products"
-import ProductInfo from "@modules/products/templates/product-info"
-import SkeletonRelatedProducts from "@modules/skeletons/templates/skeleton-related-products"
 import { notFound } from "next/navigation"
-import { HttpTypes } from "@medusajs/types"
+import type { HttpTypes } from "@medusajs/types"
+import { retrieveCatalogProduct } from "@lib/data/catalog-product"
+import { getNavigation } from "@lib/data/navigation"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import ProductDetails from "@modules/products/components/product-details"
+import styles from "@modules/products/components/product-details/product-details.module.css"
+import { randomUUID } from "node:crypto"
+import { getContentReviews } from "@lib/data/content"
 
 type ProductTemplateProps = {
   product: HttpTypes.StoreProduct
@@ -16,43 +14,38 @@ type ProductTemplateProps = {
   countryCode: string
 }
 
-const ProductTemplate: React.FC<ProductTemplateProps> = ({
-  product,
-  region,
-  countryCode,
-}) => {
-  if (!product || !product.id) {
-    return notFound()
-  }
+export default async function ProductTemplate({ product, region }: ProductTemplateProps) {
+  if (!product?.id) return notFound()
+  const [catalog, navigation, reviews] = await Promise.all([
+    Boolean(product.metadata?.catalog_scope) ? retrieveCatalogProduct(product.id) : undefined,
+    getNavigation(),
+    getContentReviews("product", product.id),
+  ])
+  const nodes = navigation?.items.find((item) => item.kind === "catalog")?.children?.filter((node) => node.visible) ?? []
+  const assigned = new Set(product.categories?.map((category) => category.handle))
+  const paths = nodes.filter((node) => assigned.has(node.href.replace(/^\/collection\//, ""))).map((node) => {
+    const path = [node]
+    const seen = new Set([node.id])
+    let parent = nodes.find((candidate) => candidate.id === node.parent_id)
+    while (parent && !seen.has(parent.id)) {
+      path.unshift(parent)
+      seen.add(parent.id)
+      const parentId = parent.parent_id
+      parent = nodes.find((candidate) => candidate.id === parentId)
+    }
+    return path
+  })
+  const categoryPath = paths.sort((a, b) => b.length - a.length)[0] ?? []
 
-  return (
-    <>
-      <div
-        className="content-container  flex flex-col small:flex-row small:items-start py-6 relative"
-        data-testid="product-container"
-      >
-        <div className="flex flex-col small:sticky small:top-48 small:py-0 small:max-w-[300px] w-full py-8 gap-y-6">
-          <ProductInfo product={product} />
-          <ProductTabs product={product} />
-        </div>
-        <div className="block w-full relative">
-          <VariantImageGallery product={product} />
-        </div>
-        <div className="flex flex-col small:sticky small:top-48 small:py-0 small:max-w-[300px] w-full py-8 gap-y-12">
-          <ProductOnboardingCta />
-          <ProductActions product={product} region={region} />
-        </div>
-      </div>
-      <div
-        className="content-container my-16 small:my-32"
-        data-testid="related-products-container"
-      >
-        <Suspense fallback={<SkeletonRelatedProducts />}>
-          <RelatedProducts product={product} countryCode={countryCode} />
-        </Suspense>
-      </div>
-    </>
-  )
+  return <article className={`texno-container ${styles.page}`} data-testid="product-container">
+    <nav aria-label="Хлебные крошки" className={styles.breadcrumbs}>
+      <ol>
+        <li><LocalizedClientLink href="/">Главная</LocalizedClientLink></li>
+        <li><LocalizedClientLink href="/store">Каталог</LocalizedClientLink></li>
+        {categoryPath.map((node) => <li key={node.id}><LocalizedClientLink href={`/store?category=${encodeURIComponent(node.id)}`}>{node.label}</LocalizedClientLink></li>)}
+        <li aria-current="page">{product.title}</li>
+      </ol>
+    </nav>
+    <ProductDetails product={product} catalog={catalog} region={region} purchaseRequestId={randomUUID()} reviews={reviews.map((review) => ({ id: review.id, productId: product.id, author: review.author, date: review.review_date, rating: review.rating as 1 | 2 | 3 | 4 | 5, text: review.body, photos: review.media.map((url) => ({ url, alt: `Фото покупателя ${review.author}` })) }))} />
+  </article>
 }
-
-export default ProductTemplate

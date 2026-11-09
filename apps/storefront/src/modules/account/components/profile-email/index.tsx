@@ -1,71 +1,19 @@
 "use client"
-
-import React, { useEffect, useActionState } from "react";
-
-import Input from "@modules/common/components/input"
-
-import AccountInfo from "../account-info"
+import { useActionState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { HttpTypes } from "@medusajs/types"
-// import { updateCustomer } from "@lib/data/customer"
-
-type MyInformationProps = {
-  customer: HttpTypes.StoreCustomer
+import { updateCustomerEmail } from "@lib/data/customer"
+import Input from "@modules/common/components/input"
+import AccountInfo from "../account-info"
+import { safeAccountAction } from "../../lib/actions"
+const ProfileEmail = ({ customer }: { customer: HttpTypes.StoreCustomer }) => {
+  const [state, action] = useActionState(safeAccountAction(updateCustomerEmail, { success: false, error: "Связь прервалась. Проверьте интернет и повторите сохранение." }), { success: false, error: null as string | null })
+  const router = useRouter()
+  useEffect(() => { if (state.success) router.refresh() }, [state, router])
+  return <form action={action} className="w-full"><AccountInfo label="Email для входа" currentInfo={customer.email} isSuccess={state.success} isError={Boolean(state.error)} errorMessage={state.error ?? undefined} clearState={() => {}} data-testid="account-email-editor">
+    <Input label="Новый email" name="email" type="email" autoComplete="email" required maxLength={254} defaultValue={customer.email} data-testid="email-input" />
+    <Input label="Текущий пароль" name="current_password" type="password" autoComplete="current-password" required maxLength={256} data-testid="current-password-input" />
+    <p className="text-sm text-ui-fg-subtle">После сохранения используйте новый email для входа. Пароль останется прежним.</p>
+  </AccountInfo></form>
 }
-
-const ProfileEmail: React.FC<MyInformationProps> = ({ customer }) => {
-  const [successState, setSuccessState] = React.useState(false)
-
-  // TODO: It seems we don't support updating emails now?
-  const updateCustomerEmail = (
-    _currentState: Record<string, unknown>,
-    _formData: FormData
-  ) => {
-    try {
-      // email: formData.get("email") as string
-      return { success: true, error: null }
-    } catch (error) {
-      return { success: false, error: String(error) }
-    }
-  }
-
-  const [state, formAction] = useActionState(updateCustomerEmail, {
-    error: null as string | null,
-    success: false,
-  })
-
-  const clearState = () => {
-    setSuccessState(false)
-  }
-
-  useEffect(() => {
-    setSuccessState(state.success)
-  }, [state])
-
-  return (
-    <form action={formAction} className="w-full">
-      <AccountInfo
-        label="Email"
-        currentInfo={`${customer.email}`}
-        isSuccess={successState}
-        isError={!!state.error}
-        errorMessage={state.error || undefined}
-        clearState={clearState}
-        data-testid="account-email-editor"
-      >
-        <div className="grid grid-cols-1 gap-y-2">
-          <Input
-            label="Email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            defaultValue={customer.email}
-            data-testid="email-input"
-          />
-        </div>
-      </AccountInfo>
-    </form>
-  )
-}
-
 export default ProfileEmail

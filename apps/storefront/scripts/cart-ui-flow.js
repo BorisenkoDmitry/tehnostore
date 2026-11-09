@@ -1,0 +1,112 @@
+async (page) => {
+  const results = { generated_at: new Date().toISOString(), safety: "Fixture only; this script never submits a valid order", checks: [], errors: [] }
+  const check = (name, passed, evidence) => { results.checks.push({ name, status: passed ? "PASS" : "FAIL", evidence }); if (!passed) throw new Error(`${name}: ${JSON.stringify(evidence)}`) }
+  const browser = page.context().browser()
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, reducedMotion: "reduce" })
+  const p = await context.newPage()
+  p.setDefaultTimeout(25000)
+  p.setDefaultNavigationTimeout(45000)
+  p.on("pageerror", error => results.errors.push(error.message))
+  p.on("console", message => { if (message.type() === "error") results.errors.push(message.text()) })
+  const fixture = "http://localhost:8000/dk/products/texno-cart-qa-fixture-20261107"
+  const ids = { black: "variant_01M6STP37T9W04ZDKT34JGTB7W", white: "variant_01M6STP37VKY19B7ZS3Q0X0RAK", unknown: "variant_01M6STP37WP02PBCEJF241GSV6" }
+  const moneyValue = text => Number(text.replace(/[^\d,.-]/g, "").replace(",", "."))
+  const header = () => p.locator(".texno-cart-count")
+  const row = id => p.locator(`[data-testid="cart-item"][data-variant-id="${id}"]`)
+  const quantity = async (id, value) => { await p.waitForFunction(({ id, value }) => document.querySelector(`[data-testid="cart-item"][data-variant-id="${id}"] [data-testid="cart-line-quantity"]`)?.textContent === String(value), { id, value }) }
+  const add = async id => {
+    await p.goto(`${fixture}?v_id=${id}`, { waitUntil: "domcontentloaded" })
+    await p.getByTestId("product-title").waitFor()
+    await p.locator(".texno-shell.is-hydrated").waitFor()
+    await p.getByTestId("add-product-button").click()
+  }
+  try {
+    await p.goto(`${fixture}?v_id=${ids.unknown}`, { waitUntil: "domcontentloaded" })
+    await p.getByTestId("product-title").waitFor()
+    await p.locator(".texno-shell.is-hydrated").waitFor()
+    check("unknown variant cannot add in UI", await p.getByTestId("add-product-button").isDisabled() && /уточняется/.test(await p.getByTestId("product-availability").innerText()))
+    await add(ids.black)
+    await p.waitForFunction(() => document.querySelector(".texno-cart-count")?.textContent === "1")
+    await p.goto("http://localhost:8000/dk/cart", { waitUntil: "domcontentloaded" })
+    await row(ids.black).waitFor()
+    await p.locator(".texno-shell.is-hydrated").waitFor()
+    check("selected actual black variant and server price in cart", await row(ids.black).getByRole("link").first().getAttribute("href").then(href => href.includes(ids.black)) && moneyValue(await row(ids.black).getByTestId("cart-line-total").innerText()) === 1500)
+    await row(ids.black).getByRole("button", { name: "Увеличить количество" }).click()
+    await quantity(ids.black, 2)
+    await p.waitForFunction(() => document.querySelector(".texno-cart-count")?.textContent === "2")
+    check("quantity updates line total and header", moneyValue(await row(ids.black).getByTestId("cart-line-total").innerText()) === 3000 && await header().innerText() === "2")
+    await p.reload({ waitUntil: "domcontentloaded" })
+    await p.locator(".texno-shell.is-hydrated").waitFor()
+    await quantity(ids.black, 2)
+    check("cart survives reload", await header().innerText() === "2")
+    await row(ids.black).getByRole("button", { name: "Увеличить количество" }).click()
+    await quantity(ids.black, 3)
+    check("quantity control stops at actual stock3", await row(ids.black).getByRole("button", { name: "Увеличить количество" }).isDisabled())
+    await row(ids.black).getByRole("button", { name: "Уменьшить количество" }).click()
+    await quantity(ids.black, 2)
+    await row(ids.black).getByRole("button", { name: "Уменьшить количество" }).click()
+    await quantity(ids.black, 1)
+    const guest = await browser.newContext({ viewport: { width: 390, height: 844 } })
+    const guestPage = await guest.newPage()
+    await guestPage.goto("http://localhost:8000/dk/cart", { waitUntil: "domcontentloaded" })
+    await guestPage.getByTestId("empty-cart").waitFor()
+    check("different guest does not see first guest cart", await guestPage.locator(".texno-cart-count").innerText() === "0")
+    await guest.close()
+    await add(ids.white)
+    await p.waitForFunction(() => document.querySelector(".texno-cart-count")?.textContent === "2")
+    await p.goto("http://localhost:8000/dk/cart", { waitUntil: "domcontentloaded" })
+    await row(ids.white).waitFor()
+    await p.locator(".texno-shell.is-hydrated").waitFor()
+    check("different variants remain separate", await p.getByTestId("cart-item").count() === 2 && moneyValue(await row(ids.white).getByTestId("cart-line-total").innerText()) === 1700)
+    for (const [device, width, height] of [["desktop", 1440, 1000], ["mobile", 390, 844]]) {
+      await p.setViewportSize({ width, height })
+      await p.screenshot({ path: `G:/WorkSpace/магазины/tehno-store/commerce/output/cart-qa-populated-${device}.png`, fullPage: true, animations: "disabled" })
+    }
+    await p.setViewportSize({ width: 1440, height: 1000 })
+    check("services all opt-in and contacts/email requirements", await p.locator('input[name="services"]').count() === 6 && await p.locator('input[name="services"]:checked').count() === 0 && await p.locator('input[name="name"]').getAttribute("required") !== null && await p.locator('input[name="phone"]').getAttribute("required") !== null && await p.locator('input[name="email"]').getAttribute("required") === null)
+    const methods = await p.locator('input[name="delivery_method"]').evaluateAll(inputs => inputs.map(input => ({ id: input.value, label: input.closest("label")?.textContent })))
+    check("nine backend shipping methods rendered", methods.length === 9, methods)
+    for (const [method, amount] of [["moscow", 3499], ["outside_mkad", 3200], ["pickup", 3200], ["transport", 3200], ["express", 3690], ["metro", 3490], ["pickup_point", 3200], ["none", 3200], ["cdek", 3200]]) {
+      await p.locator(`input[name="delivery_method"][value="${method}"]`).check()
+      await p.waitForFunction(amount => Number(document.querySelector('[data-testid="cart-total"]')?.textContent.replace(/[^\d,.-]/g, "").replace(",", ".")) === amount, amount)
+      check(`shipping ${method} server total`, moneyValue(await p.getByTestId("cart-total").innerText()) === amount)
+      if (["outside_mkad", "transport", "cdek"].includes(method)) check(`${method} explicitly awaits final delivery calculation`, await p.getByRole("complementary", { name: "Ваш заказ" }).innerText().then(text => /уточняется|согласована отдельно/.test(text)))
+      if (method === "moscow") check("Moscow street metro house required", await p.locator('input[name="address.street"]').getAttribute("required") !== null && await p.locator('input[name="address.metro"]').getAttribute("required") !== null && await p.locator('input[name="address.house"]').getAttribute("required") !== null)
+      if (method === "outside_mkad") check("outside Moscow does not require metro", await p.locator('input[name="address.metro"]').count() === 0 || await p.locator('input[name="address.metro"]').getAttribute("required") === null)
+    }
+    await p.locator('input[name="delivery_method"][value="none"]').check()
+    for (const service of await p.locator('input[name="services"]').all()) await service.check()
+    await p.waitForFunction(() => document.querySelector('[data-testid="cart-total"]')?.textContent.includes("5 550") || Number(document.querySelector('[data-testid="cart-total"]')?.textContent.replace(/[^\d,.-]/g, "").replace(",", ".")) === 5550)
+    check("all six services server summed correctly", moneyValue(await p.getByTestId("cart-total").innerText()) === 5550)
+    for (const service of await p.locator('input[name="services"]').all()) await service.uncheck()
+    await p.waitForFunction(() => Number(document.querySelector('[data-testid="cart-total"]')?.textContent.replace(/[^\d,.-]/g, "").replace(",", ".")) === 3200)
+    check("unselecting services restores server total", moneyValue(await p.getByTestId("cart-total").innerText()) === 3200)
+    check("no card credentials collected", await p.locator('input[autocomplete="cc-number"],input[autocomplete="cc-csc"],iframe[src*="stripe"],iframe[src*="adyen"]').count() === 0)
+    await p.locator('input[name="email"]').fill("invalid-email")
+    check("optional email validates when supplied", await p.locator('input[name="email"]').evaluate(input => !input.checkValidity()))
+    await p.locator('input[name="email"]').fill("")
+    check("optional email may remain blank", await p.locator('input[name="email"]').evaluate(input => input.checkValidity()))
+    await p.getByTestId("checkout-submit").click()
+    check("missing required fields prevent order submission", await p.getByTestId("order-confirmation").count() === 0 && await p.locator("form :invalid").count() > 0)
+    for (const [device, width, height] of [["desktop", 1440, 1000], ["tablet", 768, 1024], ["mobile", 390, 844], ["narrow", 320, 800]]) {
+      await p.setViewportSize({ width, height })
+      await p.evaluate(() => scrollTo(0, 0))
+      check(`populated ${device} no overflow`, await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+      await p.screenshot({ path: `G:/WorkSpace/магазины/tehno-store/commerce/output/cart-qa-populated-${device}.png`, fullPage: true, animations: "disabled" })
+    }
+    await row(ids.white).getByRole("button", { name: /Удалить/ }).click()
+    await p.waitForFunction(() => document.querySelectorAll('[data-testid="cart-item"]').length === 1)
+    await row(ids.black).getByRole("button", { name: /Удалить/ }).click()
+    await p.getByTestId("empty-cart").waitFor()
+    await p.waitForFunction(() => document.querySelector(".texno-cart-count")?.textContent === "0")
+    check("remove all rows yields empty cart and zero header", await header().innerText() === "0")
+    check("no browser errors", results.errors.length === 0, results.errors)
+  } catch (error) {
+    results.error = error.message
+    results.failure_surface = { url: p.url(), title: await p.title(), alerts: await p.getByRole("alert").allTextContents(), status: await p.getByRole("status").allTextContents(), add_button: await p.getByTestId("add-product-button").allTextContents(), cart_count: await p.locator(".texno-cart-count").allTextContents() }
+    await p.screenshot({ path: "G:/WorkSpace/магазины/tehno-store/commerce/output/cart-qa-ui-failure.png", fullPage: true, animations: "disabled" })
+  }
+  await context.close()
+  results.summary = results.checks.reduce((counts, row) => { counts[row.status] = (counts[row.status] || 0) + 1; return counts }, {})
+  return results
+}

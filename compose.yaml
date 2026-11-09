@@ -1,106 +1,167 @@
-name: texno-medusa
-
-x-app: &app
-  image: texno-medusa-dev:local
-  build: .
-  init: true
-  environment:
-    NODE_ENV: development
-    MEDUSA_DISABLE_TELEMETRY: "true"
-    NEXT_TELEMETRY_DISABLED: "1"
-    CHOKIDAR_USEPOLLING: "true"
-    DATABASE_URL: postgresql://medusa_app:${MEDUSA_DB_PASSWORD}@postgres:5432/texno_medusa
-    REDIS_URL: redis://redis:6379
-    JWT_SECRET: ${JWT_SECRET}
-    COOKIE_SECRET: ${COOKIE_SECRET}
-    STORE_CORS: http://localhost:8000,http://127.0.0.1:8000
-    ADMIN_CORS: http://localhost:9000,http://localhost:5173,http://127.0.0.1:9000
-    AUTH_CORS: http://localhost:8000,http://localhost:9000,http://localhost:5173,http://127.0.0.1:8000,http://127.0.0.1:9000
-  volumes:
-    - ./apps/backend/src:/server/apps/backend/src
-    - ./apps/backend/medusa-config.ts:/server/apps/backend/medusa-config.ts:ro
-    - ./apps/storefront/src:/server/apps/storefront/src
-    - ./apps/storefront/public:/server/apps/storefront/public
-
-services:
-  admin-setup:
-    <<: *app
-    profiles: ["tools"]
-    working_dir: /server/apps/backend
-    command: ["node", "/setup/create-admin.cjs"]
-    volumes:
-      - ./docker:/setup:ro
-      - ./.local:/credentials:ro
-
-  postgres:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: texno_medusa
-      POSTGRES_USER: texno_bootstrap
-      POSTGRES_PASSWORD: ${POSTGRES_BOOTSTRAP_PASSWORD}
-      MEDUSA_DB_PASSWORD: ${MEDUSA_DB_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./docker/init-database.sh:/docker-entrypoint-initdb.d/10-medusa.sh:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U texno_bootstrap -d texno_medusa"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-
-  backend:
-    <<: *app
-    restart: unless-stopped
-    working_dir: /server/apps/backend
-    command: ["pnpm", "dev"]
-    ports:
-      - "127.0.0.1:9000:9000"
-      - "127.0.0.1:5173:5173"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:9000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 10s
-      timeout: 5s
-      start_period: 90s
-      retries: 20
-
-  storefront:
-    <<: *app
-    restart: unless-stopped
-    working_dir: /server/apps/storefront
-    environment:
-      NODE_ENV: development
-      NEXT_TELEMETRY_DISABLED: "1"
-      WATCHPACK_POLLING: "true"
-      NEXT_PUBLIC_MEDUSA_BACKEND_URL: http://localhost:9000
-      MEDUSA_INTERNAL_BACKEND_URL: http://backend:9000
-      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY:-}
-      NEXT_PUBLIC_DEFAULT_REGION: dk
-      NEXT_PUBLIC_BASE_URL: http://localhost:8000
-    command: ["pnpm", "dev", "--webpack", "--hostname", "0.0.0.0"]
-    ports:
-      - "127.0.0.1:8000:8000"
-    depends_on:
-      backend:
-        condition: service_healthy
-
-volumes:
-  postgres_data:
-  redis_data:
+{
+  "name": "phone-store",
+  "services": {
+    "postgres": {
+      "image": "postgres:16-alpine",
+      "restart": "unless-stopped",
+      "environment": {
+        "POSTGRES_DB": "phone_store",
+        "POSTGRES_USER": "store_bootstrap",
+        "POSTGRES_PASSWORD": "${POSTGRES_BOOTSTRAP_PASSWORD}",
+        "MEDUSA_DB_PASSWORD": "${MEDUSA_DB_PASSWORD}"
+      },
+      "volumes": [
+        "postgres_data:/var/lib/postgresql/data",
+        "./docker/init-database.sh:/docker-entrypoint-initdb.d/10-medusa.sh:ro"
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD-SHELL",
+          "pg_isready -U store_bootstrap -d phone_store"
+        ],
+        "interval": "5s",
+        "timeout": "5s",
+        "retries": 20
+      }
+    },
+    "redis": {
+      "image": "redis:7-alpine",
+      "restart": "unless-stopped",
+      "command": [
+        "redis-server",
+        "--appendonly",
+        "yes"
+      ],
+      "volumes": [
+        "redis_data:/data"
+      ],
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "redis-cli",
+          "ping"
+        ],
+        "interval": "5s",
+        "timeout": "3s",
+        "retries": 20
+      }
+    },
+    "backend": {
+      "image": "phone-store:release15k",
+      "init": true,
+      "restart": "unless-stopped",
+      "working_dir": "/server/apps/backend",
+      "command": [
+        "pnpm",
+        "dev"
+      ],
+      "environment": {
+        "NODE_ENV": "development",
+        "MEDUSA_DISABLE_TELEMETRY": "true",
+        "NEXT_TELEMETRY_DISABLED": "1",
+        "DATABASE_URL": "postgresql://medusa_app:${MEDUSA_DB_PASSWORD}@postgres:5432/phone_store",
+        "REDIS_URL": "redis://redis:6379",
+        "JWT_SECRET": "${JWT_SECRET}",
+        "COOKIE_SECRET": "${COOKIE_SECRET}",
+        "STORE_CORS": "http://localhost:8000,http://127.0.0.1:8000",
+        "ADMIN_CORS": "http://localhost:9000,http://localhost:5173,http://127.0.0.1:9000",
+        "AUTH_CORS": "http://localhost:8000,http://localhost:9000,http://localhost:5173",
+        "FILE_PUBLIC_URL": "http://localhost:9000/static",
+        "PRIVATE_UPLOAD_DIR": "/var/lib/medusa-private",
+        "MEDUSA_ADMIN_HMR_CLIENT_PORT": "5173"
+      },
+      "volumes": [
+        "./apps/backend/src:/server/apps/backend/src:ro",
+        "./apps/backend/medusa-config.ts:/server/apps/backend/medusa-config.ts:ro",
+        "./.local/media/static:/server/apps/backend/static",
+        "private_files:/var/lib/medusa-private"
+      ],
+      "ports": [
+        "127.0.0.1:9000:9000",
+        "127.0.0.1:5173:5173"
+      ],
+      "depends_on": {
+        "postgres": {
+          "condition": "service_healthy"
+        },
+        "redis": {
+          "condition": "service_healthy"
+        }
+      },
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:9000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ],
+        "interval": "10s",
+        "timeout": "5s",
+        "start_period": "120s",
+        "retries": 20
+      },
+      "build": "."
+    },
+    "storefront": {
+      "image": "phone-store-storefront:production-sessionfix1",
+      "init": true,
+      "restart": "unless-stopped",
+      "working_dir": "/server/apps/storefront",
+      "command": [
+        "node",
+        "node_modules/next/dist/bin/next",
+        "start",
+        "--hostname",
+        "0.0.0.0",
+        "--port",
+        "8000"
+      ],
+      "environment": {
+        "NODE_ENV": "production",
+        "NEXT_TELEMETRY_DISABLED": "1",
+        "MEDUSA_INTERNAL_BACKEND_URL": "http://backend:9000",
+        "NEXT_PUBLIC_MEDUSA_BACKEND_URL": "http://localhost:9000",
+        "NEXT_PUBLIC_BASE_URL": "http://localhost:8000",
+        "NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY": "${NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}",
+        "NEXT_PUBLIC_DEFAULT_REGION": "${NEXT_PUBLIC_DEFAULT_REGION:-ru}"
+      },
+      "ports": [
+        "127.0.0.1:8000:8000"
+      ],
+      "depends_on": {
+        "backend": {
+          "condition": "service_healthy"
+        }
+      },
+      "build": {
+        "context": ".",
+        "dockerfile": "Dockerfile.production",
+        "target": "storefront",
+        "args": {
+          "NEXT_PUBLIC_MEDUSA_BACKEND_URL": "http://localhost:9000",
+          "NEXT_PUBLIC_BASE_URL": "http://localhost:8000",
+          "NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY": "${NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY}",
+          "NEXT_PUBLIC_DEFAULT_REGION": "${NEXT_PUBLIC_DEFAULT_REGION:-ru}",
+          "MEDUSA_BUILD_BACKEND_URL": "http://host.docker.internal:9000"
+        }
+      },
+      "healthcheck": {
+        "test": [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8000/robots.txt').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ],
+        "interval": "15s",
+        "timeout": "5s",
+        "start_period": "30s",
+        "retries": 10
+      }
+    }
+  },
+  "volumes": {
+    "postgres_data": {},
+    "redis_data": {},
+    "private_files": {}
+  }
+}

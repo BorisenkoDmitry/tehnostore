@@ -1,13 +1,6 @@
 import { StoreIcon, type IconName } from "@modules/layout/components/storefront-shell/icons"
 
-const benefits: { icon: IconName; title: string; detail: string }[] = [
-  { icon: "truck", title: "Доставим сегодня!", detail: "от 299 руб." },
-  { icon: "wallet", title: "Оплата по факту", detail: "после проверки" },
-  { icon: "shield", title: "Гарантия качества", detail: "12 месяцев" },
-  { icon: "pin", title: "Удобный самовывоз", detail: "5 мин. от метро" },
-]
-
-export default function StoreBenefits() {
+export default function StoreBenefits({ items: benefits }: { items: { icon: IconName; title: string; detail: string }[] }) {
   return <section className="texno-benefits" aria-label="Преимущества магазина">
     <ul className="texno-benefits-list texno-container">
       {benefits.map((benefit) => <li key={benefit.icon}>

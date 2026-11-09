@@ -16,9 +16,10 @@ export const metadata: Metadata = {
 export default async function PageLayout(props: { children: React.ReactNode }) {
   const customer = await retrieveCustomer()
   const cart = await retrieveCart()
+  const texnoCart = cart?.metadata?.texno_checkout === true
   let shippingOptions: StoreCartShippingOption[] = []
 
-  if (cart) {
+  if (cart && !texnoCart) {
     const { shipping_options } = await listCartOptions()
 
     shippingOptions = shipping_options
@@ -26,11 +27,11 @@ export default async function PageLayout(props: { children: React.ReactNode }) {
 
   return (
     <Nav>
-      {customer && cart && (
+      {customer && cart && !texnoCart && (
         <CartMismatchBanner customer={customer} cart={cart} />
       )}
 
-      {cart && (
+      {cart && !texnoCart && (
         <FreeShippingPriceNudge
           variant="popup"
           cart={cart}

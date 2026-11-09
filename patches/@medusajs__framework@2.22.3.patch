@@ -1,0 +1,88 @@
+diff --git a/dist/http/express-loader.js b/dist/http/express-loader.js
+--- a/dist/http/express-loader.js
++++ b/dist/http/express-loader.js
+@@ -17,6 +17,7 @@
+ const path_1 = __importDefault(require("path"));
+ const config_1 = require("../config");
+ const http_compression_1 = require("./utils/http-compression");
++const { safeAccessPath, guardPublicStatic } = require("./logging-security");
+ const NOISY_ENDPOINTS_CHUNKS = ["@fs", "@id", "@vite", "@react", "node_modules"];
+ const isHealthCheck = (req) => req.path === "/health";
+ /**
+@@ -123,19 +124,19 @@
+                 // client ip
+                 client_ip: req.ip || "-",
+                 // Request ID can be correlated with other logs (like error reports)
++                request_id: "-",
+-                request_id: req.requestId || "-",
+                 // Standard HTTP request properties
+                 http_version: tokens["http-version"](req, res),
+                 method: tokens.method(req, res),
++                path: safeAccessPath(tokens.url(req, res)),
+-                path: tokens.url(req, res),
+                 // Response details
+                 status: Number(tokens.status(req, res)),
+                 response_size: tokens.res(req, res, "content-length") || 0,
+                 request_size: tokens.req(req, res, "content-length") || 0,
+                 duration: Number(tokens["response-time"](req, res)),
+                 // Useful headers that might help in debugging or tracing
++                referrer: "[OMITTED]",
++                user_agent: "[OMITTED]",
+-                referrer: tokens.referrer(req, res) || "-",
+-                user_agent: tokens["user-agent"](req, res),
+                 timestamp: new Date().toISOString(),
+             };
+             return JSON.stringify(result);
+@@ -145,7 +146,7 @@
+         });
+     }
+     else {
++        loggingMiddleware = (0, morgan_1.default)((tokens, req, res) => `${tokens.method(req, res)} ${safeAccessPath(tokens.url(req, res))} (${tokens.status(req, res)}) - ${tokens["response-time"](req, res)} ms`, {
+-        loggingMiddleware = (0, morgan_1.default)(":method :url ← :referrer (:status) - :response-time ms", {
+             skip: shouldSkipHttpLog,
+             stream: {
+                 write: (message) => logger.http(message.trim()),
+@@ -156,7 +157,7 @@
+     app.use((0, cookie_parser_1.default)());
+     app.use((0, express_session_1.default)(sessionOpts));
+     // Currently we don't allow configuration of static files, but this can be revisited as needed.
++    app.use("/static", guardPublicStatic, express_1.default.static(path_1.default.join(baseDir, "static"), { dotfiles: "deny", index: false, redirect: false }));
+-    app.use("/static", express_1.default.static(path_1.default.join(baseDir, "static")));
+     const shutdown = async () => {
+         redisClient?.disconnect();
+     };
+diff --git a/dist/http/logging-security.js b/dist/http/logging-security.js
+new file mode 100644
+--- /dev/null
++++ b/dist/http/logging-security.js
+@@ -0,0 +1,30 @@
++"use strict"
++const path = require("path")
++
++// This is the canonical source of dist/http/logging-security.js in the pinned
++// framework patch. Kept independently executable for patch regression tests.
++function safeAccessPath(value) {
++  let pathname = String(value || "").split(/[?#]/, 1)[0]
++  try { pathname = decodeURIComponent(pathname) } catch { return "[INVALID_PATH]" }
++  return pathname
++    .replace(/(\/preview\/)[^/]+/gi, "$1[REDACTED]")
++    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[EMAIL]")
++    .replace(/[A-Za-z0-9_-]{32,}/g, "[REDACTED]")
++    .replace(/[\r\n\t]/g, "")
++}
++
++function guardPublicStatic(req, res, next) {
++  let pathname
++  try { pathname = decodeURIComponent(req.path) } catch { return res.sendStatus(400) }
++  const segments = pathname.replace(/\\/g, "/").split("/")
++  // Protect existing exports too, before Express static can serve any bytes.
++  if (segments.some((part) => part.startsWith(".") || part.toLowerCase().startsWith("private-")) ||
++      ![".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".ico"].includes(path.extname(pathname).toLowerCase())) {
++    return res.sendStatus(404)
++  }
++  res.setHeader("X-Content-Type-Options", "nosniff")
++  res.setHeader("Content-Security-Policy", "sandbox; default-src 'none'")
++  next()
++}
++
++module.exports = { safeAccessPath, guardPublicStatic }

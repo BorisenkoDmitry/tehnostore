@@ -1,19 +1,25 @@
 import { Metadata } from "next"
-import { notFound } from "next/navigation"
-import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import ProductGrid from "@modules/home/components/product-grid"
-import source from "@modules/home/data/source-preview.json"
+import { redirect } from "next/navigation"
 
 export const metadata: Metadata = { title: "Каталог — TEXNO STORE", robots: { index: false, follow: true } }
 
-export default async function CatalogPreview({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
-  const { category } = await searchParams
-  const collection = category ? source.categories.find((item) => item.id === category) : null
-  if (category && !collection) notFound()
-  const products = category ? source.products.filter((product) => product.category === category) : source.products
-  return <section className="texno-catalog-preview texno-section"><div className="texno-container">
-    <LocalizedClientLink href="/" className="texno-text-link">На главную</LocalizedClientLink>
-    <div className="texno-section-heading"><h1>{collection?.title || "Каталог товаров"}</h1>{collection && <LocalizedClientLink href="/catalog" className="texno-text-link">Все товары</LocalizedClientLink>}</div>
-    <ProductGrid products={products} />
-  </div></section>
+/** Keep saved preview URLs useful; /store is the single catalog. */
+export default async function CatalogRedirect({ params, searchParams }: {
+  params: Promise<{ countryCode: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const { countryCode } = await params
+  const values = await searchParams
+  const query = new URLSearchParams()
+  const legacy: Record<string, string> = {
+    headphones: "naushniki-i-garnitury",
+    charging: "zaryadnye-ustroystva",
+    "screen-protection": "zaschita-ekrana",
+  }
+  for (const [key, value] of Object.entries(values)) {
+    for (const item of Array.isArray(value) ? value : value === undefined ? [] : [value]) {
+      query.append(key, key === "category" ? legacy[item] || item : item)
+    }
+  }
+  redirect(`/${countryCode}/store${query.size ? `?${query}` : ""}`)
 }

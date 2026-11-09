@@ -1,0 +1,444 @@
+diff --git a/dist/cart/utils/allocate-reservations.js b/dist/cart/utils/allocate-reservations.js
+new file mode 100644
+--- /dev/null
++++ b/dist/cart/utils/allocate-reservations.js
+@@ -0,0 +1,106 @@
++"use strict"
++
++// Shared by the pinned Medusa patch and its regression tests. All arithmetic is
++// performed with Medusa MathBN; a kit's required_quantity is inventory units.
++function allocateReservations(items, levels, MathBN, invalid) {
++  const available = new Map(levels.map((level) => [
++    `${level.inventory_item_id}:${level.location_id}`,
++    MathBN.sub(level.raw_stocked_quantity ?? level.stocked_quantity, level.raw_reserved_quantity ?? level.reserved_quantity),
++  ]))
++  const reservations = []
++  const add = (item, location_id, quantity) => {
++    const previous = reservations.find((row) => row.line_item_id === item.id && row.inventory_item_id === item.inventory_item_id && row.location_id === location_id)
++    if (previous) previous.quantity = MathBN.add(previous.quantity, quantity)
++    else reservations.push({ line_item_id: item.id, inventory_item_id: item.inventory_item_id, quantity, allow_backorder: !!item.allow_backorder, location_id })
++  }
++  // Bipartite residual flow avoids a greedy false stockout: [A,B] and [A]
++  // with A=1/B=1 must allocate B/A, even if the broader line arrives first.
++  const ordinary = items.filter((item) => !item.allow_backorder)
++  const graph = new Map()
++  const edge = (from, to, capacity) => {
++    const forward = { to, capacity, initial: capacity }, reverse = { to: from, capacity: 0 }
++    forward.reverse = reverse
++    reverse.reverse = forward
++    if (!graph.has(from)) graph.set(from, [])
++    if (!graph.has(to)) graph.set(to, [])
++    graph.get(from).push(forward)
++    graph.get(to).push(reverse)
++    return forward
++  }
++  const edges = []
++  for (const [index, item] of ordinary.entries()) {
++    const quantity = MathBN.mult(item.quantity, item.required_quantity)
++    if (!MathBN.gt(quantity, 0)) throw invalid("Reservation quantity must be positive")
++    const source = edge("source", `item:${index}`, quantity)
++    const allocations = []
++    for (const location_id of [...new Set(item.location_ids ?? [])].sort()) {
++      const key = `${item.inventory_item_id}:${location_id}`
++      if (!available.has(key)) continue
++      allocations.push({ location_id, edge: edge(`item:${index}`, `location:${key}`, quantity) })
++    }
++    edges.push({ item, source, allocations })
++  }
++  for (const [key, capacity] of available) edge(`location:${key}`, "sink", MathBN.gt(capacity, 0) ? capacity : 0)
++  for (;;) {
++    const queue = ["source"], parents = new Map([["source", null]])
++    for (let index = 0; index < queue.length && !parents.has("sink"); index++) {
++      const from = queue[index]
++      for (const candidate of graph.get(from) ?? []) {
++        if (!MathBN.gt(candidate.capacity, 0) || parents.has(candidate.to)) continue
++        parents.set(candidate.to, { from, edge: candidate })
++        queue.push(candidate.to)
++      }
++    }
++    if (!parents.has("sink")) break
++    let quantity
++    for (let node = "sink"; node !== "source";) {
++      const parent = parents.get(node)
++      if (quantity === undefined || MathBN.gt(quantity, parent.edge.capacity)) quantity = parent.edge.capacity
++      node = parent.from
++    }
++    for (let node = "sink"; node !== "source";) {
++      const parent = parents.get(node)
++      parent.edge.capacity = MathBN.sub(parent.edge.capacity, quantity)
++      parent.edge.reverse.capacity = MathBN.add(parent.edge.reverse.capacity, quantity)
++      node = parent.from
++    }
++  }
++  for (const { item, source, allocations } of edges) {
++    if (MathBN.gt(source.capacity, 0)) throw invalid("Some variant does not have the required inventory")
++    for (const allocation of allocations) {
++      const quantity = MathBN.sub(allocation.edge.initial, allocation.edge.capacity)
++      if (!MathBN.gt(quantity, 0)) continue
++      add(item, allocation.location_id, quantity)
++      const key = `${item.inventory_item_id}:${allocation.location_id}`
++      available.set(key, MathBN.sub(available.get(key), quantity))
++    }
++  }
++  // Explicit backorders consume remaining physical capacity after ordinary lines.
++  for (const item of items.filter((row) => row.allow_backorder)) {
++    let remaining = MathBN.mult(item.quantity, item.required_quantity)
++    if (!MathBN.gt(remaining, 0)) throw invalid("Reservation quantity must be positive")
++    const locations = [...new Set(item.location_ids ?? [])]
++      .filter((id) => available.has(`${item.inventory_item_id}:${id}`))
++      .sort()
++    for (const location_id of locations) {
++      const key = `${item.inventory_item_id}:${location_id}`
++      const capacity = available.get(key)
++      if (!MathBN.gt(capacity, 0)) continue
++      const quantity = MathBN.gt(remaining, capacity) ? capacity : remaining
++      add(item, location_id, quantity)
++      available.set(key, MathBN.sub(capacity, quantity))
++      remaining = MathBN.sub(remaining, quantity)
++      if (!MathBN.gt(remaining, 0)) break
++    }
++    if (MathBN.gt(remaining, 0)) {
++      if (!item.allow_backorder || !locations.length) throw invalid("Some variant does not have the required inventory")
++      const location_id = locations[0]
++      const key = `${item.inventory_item_id}:${location_id}`
++      add(item, location_id, remaining)
++      available.set(key, MathBN.sub(available.get(key), remaining))
++    }
++  }
++  return reservations
++}
++
++module.exports = { allocateReservations }
+diff --git a/dist/order/utils/fulfillment-inventory.js b/dist/order/utils/fulfillment-inventory.js
+new file mode 100644
+--- /dev/null
++++ b/dist/order/utils/fulfillment-inventory.js
+@@ -0,0 +1,44 @@
++"use strict"
++
++// A line can reserve one inventory item at several locations. Consume the
++// requested inventory units once per component, leaving each remainder at its
++// original location. An explicit fulfillment location changes the physical
++// source only; it does not move the unfulfilled reservation.
++function planFulfillmentInventory({ reservations, order, input, inputItemsMap, itemsList }, MathBN, invalid) {
++  const toDelete = [], toUpdate = [], inventoryAdjustment = []
++  const allItems = itemsList ?? order.items
++  for (const item of allItems.filter((row) => row.id in inputItemsMap)) {
++    const requested = inputItemsMap[item.id].quantity
++    if (!MathBN.gt(requested, 0)) throw invalid("Fulfillment quantity must be positive")
++    const rows = reservations.filter((row) => row.line_item_id === item.id)
++    if (!rows.length) {
++      if (item.variant?.manage_inventory) throw invalid(`No stock reservation found for item ${item.id}`)
++      continue
++    }
++    const components = new Map()
++    for (const row of rows) {
++      const component = components.get(row.inventory_item_id) ?? []
++      component.push(row)
++      components.set(row.inventory_item_id, component)
++    }
++    for (const [inventoryId, componentRows] of components) {
++      const component = item.variant?.inventory_items?.find((row) => (row.inventory?.id ?? row.inventory_item_id) === inventoryId)
++      let remaining = MathBN.mult(requested, component?.required_quantity ?? 1)
++      // Prefer reservations already held at the chosen physical source.
++      componentRows.sort((a, b) => Number(b.location_id === input.location_id) - Number(a.location_id === input.location_id) || a.id.localeCompare(b.id))
++      for (const row of componentRows) {
++        if (!MathBN.gt(remaining, 0)) break
++        const consumed = MathBN.gt(remaining, row.quantity) ? row.quantity : remaining
++        const rest = MathBN.sub(row.quantity, consumed)
++        inventoryAdjustment.push({ inventory_item_id: inventoryId, location_id: input.location_id ?? row.location_id, adjustment: MathBN.mult(consumed, -1) })
++        if (MathBN.eq(rest, 0)) toDelete.push(row.id)
++        else toUpdate.push({ id: row.id, quantity: rest })
++        remaining = MathBN.sub(remaining, consumed)
++      }
++      if (MathBN.gt(remaining, 0)) throw invalid(`Quantity to fulfill exceeds reserved quantity for item ${item.id}`)
++    }
++  }
++  return { toDelete, toUpdate, inventoryAdjustment }
++}
++
++module.exports = { planFulfillmentInventory }
+diff --git a/dist/cart/steps/reserve-inventory.js b/dist/cart/steps/reserve-inventory.js
+--- a/dist/cart/steps/reserve-inventory.js
++++ b/dist/cart/steps/reserve-inventory.js
+@@ -2,6 +2,7 @@
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.reserveInventoryStep = exports.reserveInventoryStepId = void 0;
+ const utils_1 = require("@medusajs/framework/utils");
++const { allocateReservations } = require("../utils/allocate-reservations");
+ const workflows_sdk_1 = require("@medusajs/framework/workflows-sdk");
+ exports.reserveInventoryStepId = "reserve-inventory-step";
+ /**
+@@ -30,19 +31,12 @@
+     }
+     const inventoryService = container.resolve(utils_1.Modules.INVENTORY);
+     const locking = container.resolve(utils_1.Modules.LOCKING);
+-    const inventoryItemIds = [];
+-    const items = data.items.map((item) => {
+-        inventoryItemIds.push(item.inventory_item_id);
+-        return {
+-            line_item_id: item.id,
+-            inventory_item_id: item.inventory_item_id,
+-            quantity: utils_1.MathBN.mult(item.required_quantity, item.quantity),
+-            allow_backorder: item.allow_backorder,
+-            location_id: item.location_ids[0],
+-        };
+-    });
+-    const lockingKeys = Array.from(new Set(inventoryItemIds));
++    const inventoryItemIds = data.items.map((item) => item.inventory_item_id);
++    const lockingKeys = Array.from(new Set(inventoryItemIds)).sort();
+     const reservations = await locking.execute(lockingKeys, async () => {
++        const levels = await inventoryService.listInventoryLevels({ inventory_item_id: lockingKeys }, { take: null });
++        const items = allocateReservations(data.items, levels, utils_1.MathBN, (message) => new utils_1.MedusaError(utils_1.MedusaError.Types.NOT_ALLOWED, message, utils_1.MedusaError.Codes.INSUFFICIENT_INVENTORY));
++        // The module rechecks aggregate demand under PostgreSQL row locks.
+         return await inventoryService.createReservationItems(items);
+     });
+     return new workflows_sdk_1.StepResponse(reservations, {
+diff --git a/dist/cart/steps/confirm-inventory.js b/dist/cart/steps/confirm-inventory.js
+--- a/dist/cart/steps/confirm-inventory.js
++++ b/dist/cart/steps/confirm-inventory.js
+@@ -2,6 +2,7 @@
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.confirmInventoryStep = exports.confirmInventoryStepId = void 0;
+ const utils_1 = require("@medusajs/framework/utils");
++const { allocateReservations } = require("../utils/allocate-reservations");
+ const workflows_sdk_1 = require("@medusajs/framework/workflows-sdk");
+ exports.confirmInventoryStepId = "confirm-inventory-step";
+ /**
+@@ -26,18 +27,9 @@
+         return new workflows_sdk_1.StepResponse([], []);
+     }
+     const inventoryService = container.resolve(utils_1.Modules.INVENTORY);
+-    // TODO: Should be bulk
+-    const promises = data.items.map(async (item) => {
+-        if (item.allow_backorder) {
+-            return true;
+-        }
+-        const itemQuantity = utils_1.MathBN.mult(item.quantity, item.required_quantity);
+-        return await inventoryService.confirmInventory(item.inventory_item_id, item.location_ids, itemQuantity);
+-    });
+-    const inventoryCoverage = await (0, utils_1.promiseAll)(promises);
+-    if (inventoryCoverage.some((hasCoverage) => !hasCoverage)) {
+-        throw new utils_1.MedusaError(utils_1.MedusaError.Types.NOT_ALLOWED, `Some variant does not have the required inventory`, utils_1.MedusaError.Codes.INSUFFICIENT_INVENTORY);
+-    }
++    const ids = [...new Set(data.items.map((item) => item.inventory_item_id))];
++    const levels = await inventoryService.listInventoryLevels({ inventory_item_id: ids }, { take: null });
++    allocateReservations(data.items, levels, utils_1.MathBN, (message) => new utils_1.MedusaError(utils_1.MedusaError.Types.NOT_ALLOWED, message, utils_1.MedusaError.Codes.INSUFFICIENT_INVENTORY));
+     return new workflows_sdk_1.StepResponse(null);
+ });
+ //# sourceMappingURL=confirm-inventory.js.map
+\ No newline at end of file
+diff --git a/dist/cart/utils/prepare-confirm-inventory-input.js b/dist/cart/utils/prepare-confirm-inventory-input.js
+--- a/dist/cart/utils/prepare-confirm-inventory-input.js
++++ b/dist/cart/utils/prepare-confirm-inventory-input.js
+@@ -174,11 +174,7 @@
+                 required_quantity: variantInventoryItem.required_quantity,
+                 allow_backorder: !!variant.allow_backorder || !!item.allow_backorder,
+                 quantity: item.quantity,
+-                location_ids: locationsWithAvailability.length
+-                    ? locationsWithAvailability
+-                    : locationsWithLevel.length
+-                        ? locationsWithLevel
+-                        : location_ids,
++                location_ids: locationsWithLevel.length ? locationsWithLevel : location_ids,
+             });
+         });
+     });
+diff --git a/dist/cart/workflows/complete-cart.js b/dist/cart/workflows/complete-cart.js
+--- a/dist/cart/workflows/complete-cart.js
++++ b/dist/cart/workflows/complete-cart.js
+@@ -352,7 +352,7 @@
+         });
+         const shippingOptionsData = (0, common_1.useQueryGraphStep)({
+             entity: "shipping_option",
+-            fields: ["id", "shipping_profile_id"],
++            fields: ["id", "shipping_profile_id", "service_zone.fulfillment_set.type", "service_zone.fulfillment_set.location.id"],
+             filters: { id: cartOptionIds },
+             options: {
+                 cache: {
+@@ -471,7 +471,16 @@
+                 variants,
+                 items: reservationItemsData,
+             },
+-        }, prepare_confirm_inventory_input_1.prepareConfirmInventoryInput);
++            shippingOptions: shippingOptionsData.data,
++        }, (data) => {
++            const formatted = (0, prepare_confirm_inventory_input_1.prepareConfirmInventoryInput)(data);
++            const pickups = data.shippingOptions.filter((option) => option.service_zone?.fulfillment_set?.type === "pickup");
++            if (pickups.length) {
++                const locations = new Set(pickups.map((option) => option.service_zone.fulfillment_set.location?.id).filter(Boolean));
++                formatted.items.forEach((item) => { item.location_ids = item.location_ids.filter((id) => locations.has(id)); });
++            }
++            return formatted;
++        });
+         const updateCompletedAt = (0, workflows_sdk_1.transform)({ cart: cartData.data }, ({ cart }) => {
+             return {
+                 id: cart.id,
+diff --git a/dist/order/workflows/create-fulfillment.js b/dist/order/workflows/create-fulfillment.js
+--- a/dist/order/workflows/create-fulfillment.js
++++ b/dist/order/workflows/create-fulfillment.js
+@@ -10,6 +10,7 @@
+ const steps_1 = require("../steps");
+ const build_reservations_map_1 = require("../utils/build-reservations-map");
+ const order_validation_1 = require("../utils/order-validation");
++const { planFulfillmentInventory } = require("../utils/fulfillment-inventory");
+ /**
+  * This step validates that a fulfillment can be created for an order. If the order
+  * is canceled, the items don't exist in the order, or the items aren't grouped by
+@@ -94,7 +95,7 @@
+             ];
+         }
+         // if line item is from a managed variant, create a fulfillment item for each reservation item
+-        return reservations.map((r) => {
++        return [...new Map(reservations.map((r) => [r.inventory_item_id, r])).values()].map((r) => {
+             const iItem = orderItem?.variant?.inventory_items.find((ii) => ii.inventory.id === r.inventory_item_id);
+             return {
+                 line_item_id: i.id,
+@@ -138,59 +139,16 @@
+             delivery_address: deliveryAddress,
+             created_by: input.created_by,
+             packed_at: new Date(),
+-            metadata: input.metadata,
++            metadata: {
++                ...input.metadata,
++                inventory_sources: planFulfillmentInventory({ reservations, order, input, inputItemsMap: Object.fromEntries(input.items.map((item) => [item.id, item])), itemsList }, utils_1.MathBN, (message) => new utils_1.MedusaError(utils_1.MedusaError.Types.INVALID_DATA, message)).inventoryAdjustment.map((entry) => ({ inventory_item_id: entry.inventory_item_id, location_id: entry.location_id, quantity: utils_1.MathBN.mult(entry.adjustment, -1) })),
++            },
+             additional_data: input.additional_data,
+         },
+     };
+ }
+-function prepareInventoryUpdate({ reservations, order, input, inputItemsMap, itemsList, }) {
+-    const toDelete = [];
+-    const toUpdate = [];
+-    const inventoryAdjustment = [];
+-    const orderItemsMap = new Map((itemsList ?? order.items).map((i) => [i.id, i]));
+-    const reservationMap = (0, build_reservations_map_1.buildReservationsMap)(reservations);
+-    const allItems = itemsList ?? order.items;
+-    const itemsToFulfill = allItems.filter((i) => i.id in inputItemsMap);
+-    // iterate over items that are being fulfilled
+-    for (const item of itemsToFulfill) {
+-        const reservations = reservationMap.get(item.id);
+-        const orderItem = orderItemsMap.get(item.id);
+-        if (!reservations?.length) {
+-            if (item.variant?.manage_inventory) {
+-                throw new utils_1.MedusaError(utils_1.MedusaError.Types.INVALID_DATA, `No stock reservation found for item ${item.id} - ${item.title} (${item.variant_title})`);
+-            }
+-            continue;
+-        }
+-        const inputQuantity = inputItemsMap[item.id]?.quantity ?? item.quantity;
+-        reservations.forEach((reservation) => {
+-            const iItem = orderItem?.variant?.inventory_items.find((ii) => ii.inventory.id === reservation.inventory_item_id);
+-            const adjustemntQuantity = utils_1.MathBN.mult(inputQuantity, iItem?.required_quantity ?? 1);
+-            const remainingReservationQuantity = utils_1.MathBN.sub(reservation.quantity, adjustemntQuantity);
+-            if (utils_1.MathBN.lt(remainingReservationQuantity, 0)) {
+-                throw new utils_1.MedusaError(utils_1.MedusaError.Types.INVALID_DATA, `Quantity to fulfill exceeds the reserved quantity for the item: ${item.id}`);
+-            }
+-            inventoryAdjustment.push({
+-                inventory_item_id: reservation.inventory_item_id,
+-                location_id: input.location_id ?? reservation.location_id,
+-                adjustment: utils_1.MathBN.mult(adjustemntQuantity, -1),
+-            });
+-            if (utils_1.MathBN.eq(remainingReservationQuantity, 0)) {
+-                toDelete.push(reservation.id);
+-            }
+-            else {
+-                toUpdate.push({
+-                    id: reservation.id,
+-                    quantity: remainingReservationQuantity,
+-                    location_id: input.location_id ?? reservation.location_id,
+-                });
+-            }
+-        });
+-    }
+-    return {
+-        toDelete,
+-        toUpdate,
+-        inventoryAdjustment,
+-    };
++function prepareInventoryUpdate(data) {
++    return planFulfillmentInventory(data, utils_1.MathBN, (message) => new utils_1.MedusaError(utils_1.MedusaError.Types.INVALID_DATA, message));
+ }
+ exports.createOrderFulfillmentWorkflowId = "create-order-fulfillment";
+ /**
+diff --git a/dist/order/steps/complete-orders.js b/dist/order/steps/complete-orders.js
+--- a/dist/order/steps/complete-orders.js
++++ b/dist/order/steps/complete-orders.js
+@@ -3,6 +3,7 @@
+ exports.completeOrdersStep = exports.completeOrdersStepId = void 0;
+ const utils_1 = require("@medusajs/framework/utils");
+ const workflows_sdk_1 = require("@medusajs/framework/workflows-sdk");
++const { getLastPaymentStatus } = require("../utils/aggregate-status");
+ exports.completeOrdersStepId = "complete-orders";
+ /**
+  * This step completes one or more orders.
+@@ -14,6 +15,13 @@
+     }, {
+         select: ["id", "status"],
+     });
++    const query = container.resolve(utils_1.ContainerRegistrationKeys.QUERY);
++    const { data: details } = await query.graph({ entity: "order", fields: ["id", "metadata", "status", "total", "items.quantity", "items.requires_shipping", "items.detail.delivered_quantity", "payment_collections.*"], filters: { id: data.orderIds } });
++    for (const order of details) {
++        if (!order.metadata?.texno_order || order.status === "completed") continue;
++        if (!utils_1.MathBN.eq(order.total, 0) && getLastPaymentStatus(order) !== "captured") throw new utils_1.MedusaError(utils_1.MedusaError.Types.NOT_ALLOWED, "Сначала отметьте полную оплату заказа");
++        if (order.items?.some((item) => item.requires_shipping && utils_1.MathBN.lt(item.detail?.delivered_quantity ?? 0, item.quantity))) throw new utils_1.MedusaError(utils_1.MedusaError.Types.NOT_ALLOWED, "Сначала отметьте доставку или выдачу всех товаров");
++    }
+     const completed = await service.completeOrder(data.orderIds);
+     return new workflows_sdk_1.StepResponse(completed, completed.map((order) => {
+         const prevData = orders.find((o) => o.id === order.id);
+diff --git a/dist/cart/steps/update-carts.js b/dist/cart/steps/update-carts.js
+--- a/dist/cart/steps/update-carts.js
++++ b/dist/cart/steps/update-carts.js
+@@ -31,6 +31,8 @@
+             "currency_code",
+             "metadata",
+             "completed_at",
++            "shipping_address_id",
++            "billing_address_id",
+         ],
+     });
+     const cartsBeforeUpdate = await cartModule.listCarts({ id: data.map((d) => d.id) }, { select: selects, relations });
+@@ -48,21 +50,27 @@
+         return false;
+     });
+     const addressesBeforeUpdate = await cartModule.listAddresses({
+-        id: addressesToUpdate.map((address) => address.id),
++        id: [...new Set([...addressesToUpdate.map((address) => address.id), ...cartsBeforeUpdate.flatMap((cart) => [cart.shipping_address_id, cart.billing_address_id]).filter(Boolean)])],
+     });
+     if (addressesToUpdate.length) {
+         await cartModule.updateAddresses(addressesToUpdate);
+     }
+     const updatedCart = await cartModule.updateCarts(data);
++    const previousAddressIds = new Set(cartsBeforeUpdate.flatMap((cart) => [cart.shipping_address_id, cart.billing_address_id]).filter(Boolean));
++    const newAddressIds = [...new Set(data.flatMap((input) => {
++        const cart = updatedCart.find((row) => row.id === input.id);
++        return ["shipping_address", "billing_address"].filter((key) => input[key] && !input[key].id).map((key) => cart?.[`${key}_id`]);
++    }).filter((id) => id && !previousAddressIds.has(id)))];
+     return new workflows_sdk_1.StepResponse(updatedCart, {
+         cartsBeforeUpdate,
+         addressesBeforeUpdate,
++        newAddressIds,
+     });
+ }, async (dataToCompensate, { container }) => {
+     if (!dataToCompensate) {
+         return;
+     }
+-    const { cartsBeforeUpdate, addressesBeforeUpdate } = dataToCompensate;
++    const { cartsBeforeUpdate, addressesBeforeUpdate, newAddressIds } = dataToCompensate;
+     const cartModule = container.resolve(utils_1.Modules.CART);
+     const addressesToUpdate = [];
+     for (const address of addressesBeforeUpdate) {
+@@ -83,8 +91,12 @@
+             currency_code: cart.currency_code,
+             metadata: cart.metadata,
+             completed_at: cart.completed_at,
++            shipping_address: cart.shipping_address_id ? { id: cart.shipping_address_id } : null,
++            billing_address: cart.billing_address_id ? { id: cart.billing_address_id } : null,
+         });
+     }
+-    return await cartModule.updateCarts(dataToUpdate);
++    const restored = await cartModule.updateCarts(dataToUpdate);
++    if (newAddressIds?.length) await cartModule.deleteAddresses(newAddressIds);
++    return restored;
+ });
+ //# sourceMappingURL=update-carts.js.map
+\ No newline at end of file

@@ -1,0 +1,21 @@
+diff --git a/dist/api/admin/stock-locations/validators.js b/dist/api/admin/stock-locations/validators.js
+index 99ec8dc4694258bc42e5043ab445ffe9d8c7e87f..7284b948ca5ab316f4f986cbe1a2f3897139b8f2 100644
+--- a/dist/api/admin/stock-locations/validators.js
++++ b/dist/api/admin/stock-locations/validators.js
+@@ -35,14 +35,14 @@ exports.AdminUpsertStockLocationAddress = zod_1.z.object({
+     metadata: zod_1.z.record(zod_1.z.string(), zod_1.z.unknown()).nullish(),
+ });
+ exports.AdminCreateStockLocation = zod_1.z.object({
+-    name: zod_1.z.preprocess((val) => val.trim(), zod_1.z.string()),
++    name: zod_1.z.preprocess((val) => typeof val === "string" ? val.trim() : val, zod_1.z.string()),
+     address: exports.AdminUpsertStockLocationAddress.optional(),
+     address_id: zod_1.z.string().nullish(),
+     metadata: zod_1.z.record(zod_1.z.string(), zod_1.z.unknown()).nullish(),
+ });
+ exports.AdminUpdateStockLocation = zod_1.z.object({
+     name: zod_1.z
+-        .preprocess((val) => val.trim(), zod_1.z.string().optional())
++        .preprocess((val) => typeof val === "string" ? val.trim() : val, zod_1.z.string().optional())
+         .optional(),
+     address: exports.AdminUpsertStockLocationAddress.optional(),
+     address_id: zod_1.z.string().nullish(),

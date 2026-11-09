@@ -6,6 +6,13 @@ export default defineConfig([
   ...nextVitals,
   ...nextTs,
   {
+    files: ["**/*.test.cjs"],
+    rules: {
+      "@typescript-eslint/no-require-imports": ["error", { allow: ["^node:", "^\\.\\./"] }],
+    },
+  },
+  {
+    files: ["**/*.{js,jsx,mjs,ts,tsx,mts,cts}"],
     rules: {
       "react-hooks/set-state-in-effect": "warn",
       "react-hooks/refs": "warn",

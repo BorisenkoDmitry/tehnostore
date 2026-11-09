@@ -1,139 +1,24 @@
-import { Disclosure } from "@headlessui/react"
-import { Badge, Button, clx } from "@modules/common/components/ui"
-import { useEffect } from "react"
-
-import useToggleState from "@lib/hooks/use-toggle-state"
 import { useFormStatus } from "react-dom"
+import { useEffect, useState } from "react"
+import { Button } from "@modules/common/components/ui"
 
-type AccountInfoProps = {
-  label: string
-  currentInfo: string | React.ReactNode
-  isSuccess?: boolean
-  isError?: boolean
-  errorMessage?: string
-  clearState: () => void
-  children?: React.ReactNode
-  'data-testid'?: string
-}
+type Props = { label: string; currentInfo: React.ReactNode; isSuccess?: boolean; isError?: boolean; errorMessage?: string; clearState: () => void; children?: React.ReactNode; "data-testid"?: string }
 
-const AccountInfo = ({
-  label,
-  currentInfo,
-  isSuccess,
-  isError,
-  clearState,
-  errorMessage = "An error occurred, please try again",
-  children,
-  'data-testid': dataTestid
-}: AccountInfoProps) => {
-  const { state, close, toggle } = useToggleState()
-
+const AccountInfo = ({ label, currentInfo, isSuccess, isError, errorMessage = "Не удалось сохранить данные. Повторите попытку.", clearState, children, "data-testid": testId }: Props) => {
+  const [open, setOpen] = useState(false)
   const { pending } = useFormStatus()
-
-  const handleToggle = () => {
-    clearState()
-    setTimeout(() => toggle(), 100)
-  }
-
-  useEffect(() => {
-    if (isSuccess) {
-      close()
-    }
-  }, [isSuccess, close])
-
-  return (
-    <div className="text-small-regular" data-testid={dataTestid}>
-      <div className="flex items-end justify-between">
-        <div className="flex flex-col">
-          <span className="uppercase text-ui-fg-base">{label}</span>
-          <div className="flex items-center flex-1 basis-0 justify-end gap-x-4">
-            {typeof currentInfo === "string" ? (
-              <span className="font-semibold" data-testid="current-info">{currentInfo}</span>
-            ) : (
-              currentInfo
-            )}
-          </div>
-        </div>
-        <div>
-          <Button
-            variant="secondary"
-            className="w-[100px] min-h-[25px] py-1"
-            onClick={handleToggle}
-            type={state ? "reset" : "button"}
-            data-testid="edit-button"
-            data-active={state}
-          >
-            {state ? "Cancel" : "Edit"}
-          </Button>
-        </div>
-      </div>
-
-      {/* Success state */}
-      <Disclosure>
-        <Disclosure.Panel
-          static
-          className={clx(
-            "transition-[max-height,opacity] duration-300 ease-in-out overflow-hidden",
-            {
-              "max-h-[1000px] opacity-100": isSuccess,
-              "max-h-0 opacity-0": !isSuccess,
-            }
-          )}
-          data-testid="success-message"
-        >
-          <Badge className="p-2 my-4" color="green">
-            <span>{label} updated succesfully</span>
-          </Badge>
-        </Disclosure.Panel>
-      </Disclosure>
-
-      {/* Error state  */}
-      <Disclosure>
-        <Disclosure.Panel
-          static
-          className={clx(
-            "transition-[max-height,opacity] duration-300 ease-in-out overflow-hidden",
-            {
-              "max-h-[1000px] opacity-100": isError,
-              "max-h-0 opacity-0": !isError,
-            }
-          )}
-          data-testid="error-message"
-        >
-          <Badge className="p-2 my-4" color="red">
-            <span>{errorMessage}</span>
-          </Badge>
-        </Disclosure.Panel>
-      </Disclosure>
-
-      <Disclosure>
-        <Disclosure.Panel
-          static
-          className={clx(
-            "transition-[max-height,opacity] duration-300 ease-in-out overflow-visible",
-            {
-              "max-h-[1000px] opacity-100": state,
-              "max-h-0 opacity-0": !state,
-            }
-          )}
-        >
-          <div className="flex flex-col gap-y-2 py-4">
-            <div>{children}</div>
-            <div className="flex items-center justify-end mt-2">
-              <Button
-                isLoading={pending}
-                className="w-full small:max-w-[140px]"
-                type="submit"
-                data-testid="save-button"
-              >
-                Save changes
-              </Button>
-            </div>
-          </div>
-        </Disclosure.Panel>
-      </Disclosure>
+  useEffect(() => { if (isSuccess) setOpen(false) }, [isSuccess])
+  return <section className="text-base" data-testid={testId}>
+    <div className="flex items-start justify-between gap-5">
+      <div className="min-w-0"><h2 className="text-sm text-ui-fg-subtle mb-2">{label}</h2><div className="break-words font-medium" data-testid="current-info">{currentInfo || "Не указано"}</div></div>
+      <Button variant="secondary" type="button" className="min-h-11 shrink-0 px-4" disabled={pending} aria-expanded={open} onClick={() => { clearState(); setOpen(!open) }} data-testid="edit-button" data-active={open}>{open ? "Отмена" : "Изменить"}</Button>
     </div>
-  )
+    {isSuccess && !open && <p role="status" className="text-green-800 mt-4 text-sm" data-testid="success-message">Данные сохранены</p>}
+    {open && <div className="flex flex-col gap-4 pt-5">
+      {children}
+      {isError && <p role="alert" className="text-red-700 text-sm" data-testid="error-message">{errorMessage}</p>}
+      <Button isLoading={pending} className="self-start min-h-11 px-5" type="submit" data-testid="save-button">Сохранить</Button>
+    </div>}
+  </section>
 }
-
 export default AccountInfo

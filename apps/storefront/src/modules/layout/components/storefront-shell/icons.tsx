@@ -1,6 +1,6 @@
 import { SVGProps } from "react"
 
-export type IconName = "catalog" | "close" | "bag" | "phone" | "telegram" | "arrow" | "plus" | "info" | "truck" | "shield" | "pin" | "chat" | "question" | "account" | "wallet"
+export type IconName = "catalog" | "close" | "bag" | "phone" | "mail" | "clock" | "telegram" | "arrow" | "plus" | "info" | "truck" | "shield" | "pin" | "chat" | "question" | "account" | "wallet"
 
 export function StoreIcon({ name, ...props }: SVGProps<SVGSVGElement> & { name: IconName }) {
   return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
@@ -8,6 +8,8 @@ export function StoreIcon({ name, ...props }: SVGProps<SVGSVGElement> & { name: 
     {name === "close" && <path d="m6 6 12 12M18 6 6 18" />}
     {name === "bag" && <><path d="M5 8h14l1 13H4L5 8Z" /><path d="M8 8V7a4 4 0 0 1 8 0v1" /></>}
     {name === "phone" && <path d="M7.5 3H4a1 1 0 0 0-1 1c0 9.4 7.6 17 17 17a1 1 0 0 0 1-1v-3.5l-5-2-2 2a14 14 0 0 1-6.5-6.5l2-2-2-5Z" />}
+    {name === "mail" && <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 6 9 7 9-7" /></>}
+    {name === "clock" && <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>}
     {name === "telegram" && <><path d="m3 11 18-7-4 17-6-5-4 3v-6l10-6-8 7-6-3Z" /><path d="m11 16 6-9" /></>}
     {name === "arrow" && <path d="M4 12h15m-6-6 6 6-6 6" />}
     {name === "plus" && <path d="M12 5v14M5 12h14" />}

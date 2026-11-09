@@ -1,0 +1,244 @@
+diff --git a/dist/services/inventory-module.js b/dist/services/inventory-module.js
+--- a/dist/services/inventory-module.js
++++ b/dist/services/inventory-module.js
+@@ -37,18 +37,24 @@
+     }
+     async ensureInventoryLevels(data, options, context) {
+         options ??= {};
++        // Every caller is inside InjectTransactionManager. Lock before reading
++        // counters, including native reservations and calls outside core flows.
++        // Refresh bypasses an earlier identity-map snapshot in this transaction.
++        const manager = context.transactionManager;
++        if (!manager) throw new Error("Inventory mutation requires a transaction");
+         const validateQuantityAtLocation = options.validateQuantityAtLocation ?? false;
+         const data_ = data.map((dt) => ({
+             location_id: dt.location_id,
+             inventory_item_id: dt.inventory_item_id,
+         }));
+         const [idData, itemLocationData] = (0, utils_1.partitionArray)(data_, ({ id }) => !!id);
+-        const inventoryLevels = await this.inventoryLevelService_.list({
++        const inventoryLevels = await manager.find((0, utils_1.toMikroORMEntity)(_models_1.InventoryLevel), {
+             $or: [
+                 { id: idData.filter(({ id }) => !!id).map((e) => e.id) },
+                 ...itemLocationData,
+             ],
+-        }, {}, context);
++            deleted_at: null,
++        }, { lockMode: 3, refresh: true, orderBy: { id: "ASC" } });
+         const inventoryLevelIdMap = new Map(inventoryLevels.map((level) => [level.id, level]));
+         const inventoryLevelItemLocationMap = inventoryLevels.reduce((acc, curr) => {
+             const inventoryLevelMap = acc.get(curr.inventory_item_id) ?? new Map();
+@@ -76,14 +82,17 @@
+             throw new utils_1.MedusaError(utils_1.MedusaError.Types.NOT_FOUND, error);
+         }
+         if (validateQuantityAtLocation) {
++            const demand = new Map();
+             for (const item of data) {
+-                if (!!item.allow_backorder) {
+-                    continue;
+-                }
+-                const locations = inventoryLevelItemLocationMap.get(item.inventory_item_id);
+-                const level = locations?.get(item.location_id);
+-                if (utils_1.MathBN.lt(level.available_quantity, item.quantity)) {
+-                    throw new utils_1.MedusaError(utils_1.MedusaError.Types.NOT_ALLOWED, `Not enough stock available for item ${item.inventory_item_id} at location ${item.location_id}`);
++                if (item.allow_backorder) continue;
++                const key = `${item.inventory_item_id}:${item.location_id}`;
++                demand.set(key, utils_1.MathBN.add(demand.get(key) ?? 0, item.quantity ?? 0));
++            }
++            for (const level of inventoryLevels) {
++                const quantity = demand.get(`${level.inventory_item_id}:${level.location_id}`) ?? 0;
++                const available = utils_1.MathBN.sub(level.raw_stocked_quantity ?? level.stocked_quantity, level.raw_reserved_quantity ?? level.reserved_quantity);
++                if (utils_1.MathBN.gt(quantity, 0) && utils_1.MathBN.lt(available, quantity)) {
++                    throw new utils_1.MedusaError(utils_1.MedusaError.Types.NOT_ALLOWED, `Not enough stock available for item ${level.inventory_item_id} at location ${level.location_id}`);
+                 }
+             }
+         }
+@@ -113,6 +122,9 @@
+             : serializedReservations[0];
+     }
+     async createReservationItems_(input, context = {}) {
++        for (const item of input) {
++            if (!utils_1.MathBN.gt(item.quantity, 0)) throw new utils_1.MedusaError(utils_1.MedusaError.Types.INVALID_DATA, "Reservation quantity must be positive");
++        }
+         const inventoryLevels = await this.ensureInventoryLevels(input.map(({ location_id, inventory_item_id, quantity, allow_backorder }) => ({
+             location_id,
+             inventory_item_id,
+@@ -222,8 +234,12 @@
+         return Array.isArray(input) ? serialized : serialized[0];
+     }
+     async updateReservationItems_(input, context = {}) {
++        for (const item of input) {
++            if (item.quantity !== undefined && !utils_1.MathBN.gte(item.quantity, 0)) throw new utils_1.MedusaError(utils_1.MedusaError.Types.INVALID_DATA, "Reservation quantity cannot be negative");
++        }
+         const ids = input.map((u) => u.id);
+-        const reservationItems = await this.reservationItemService_.list({ id: ids }, {}, context);
++        if (new Set(ids).size !== ids.length) throw new utils_1.MedusaError(utils_1.MedusaError.Types.INVALID_DATA, "Duplicate reservation updates");
++        const reservationItems = await context.transactionManager.find((0, utils_1.toMikroORMEntity)(_models_1.ReservationItem), { id: ids, deleted_at: null }, { lockMode: 3, refresh: true, orderBy: { id: "ASC" } });
+         const diff = (0, utils_1.arrayDifference)(ids, reservationItems.map((i) => i.id));
+         if (diff.length) {
+             throw new utils_1.MedusaError(utils_1.MedusaError.Types.INVALID_DATA, `Reservation item with id ${diff.join(", ")} not found`);
+@@ -237,7 +253,7 @@
+                 const reservationLocationAdjustment = locationMap.get(reservation.location_id) ?? 0;
+                 locationMap.set(reservation.location_id, utils_1.MathBN.sub(reservationLocationAdjustment, reservation.quantity));
+                 const updateLocationAdjustment = locationMap.get(update.location_id) ?? 0;
+-                locationMap.set(update.location_id, utils_1.MathBN.add(updateLocationAdjustment, update.quantity || reservation.quantity));
++                locationMap.set(update.location_id, utils_1.MathBN.add(updateLocationAdjustment, update.quantity ?? reservation.quantity));
+             }
+             else if ((0, utils_1.isDefined)(update.quantity) &&
+                 !utils_1.MathBN.eq(update.quantity, reservation.quantity)) {
+@@ -247,24 +263,20 @@
+             acc.set(reservation.inventory_item_id, locationMap);
+             return acc;
+         }, new Map());
+-        const availabilityData = input.map((data) => {
+-            const reservation = reservationMap.get(data.id);
+-            let adjustment = data.quantity
+-                ? utils_1.MathBN.sub(data.quantity, reservation.quantity)
+-                : 0;
+-            if (utils_1.MathBN.lt(adjustment, 0)) {
+-                adjustment = 0;
+-            }
+-            return {
+-                inventory_item_id: reservation.inventory_item_id,
+-                location_id: data.location_id ?? reservation.location_id,
+-                quantity: adjustment,
+-                allow_backorder: data.allow_backorder || reservation.allow_backorder || false,
+-            };
+-        });
+-        const inventoryLevels = await this.ensureInventoryLevels(availabilityData, {
+-            validateQuantityAtLocation: true,
+-        }, context);
++        // Validate the net positive demand per location, not each row in
++        // isolation. Include source locations so both saved counters move.
++        const availabilityData = [];
++        for (const [inventory_item_id, locations] of adjustments) {
++            for (const [location_id, quantity] of locations) {
++                const relevant = input.filter((data) => {
++                    const previous = reservationMap.get(data.id);
++                    return previous.inventory_item_id === inventory_item_id && (data.location_id ?? previous.location_id) === location_id;
++                });
++                const allow_backorder = relevant.length > 0 && relevant.every((data) => data.allow_backorder ?? reservationMap.get(data.id).allow_backorder ?? false);
++                availabilityData.push({ inventory_item_id, location_id, quantity: utils_1.MathBN.gt(quantity, 0) ? quantity : 0, allow_backorder });
++            }
++        }
++        const inventoryLevels = await this.ensureInventoryLevels(availabilityData, { validateQuantityAtLocation: true }, context);
+         const result = await this.reservationItemService_.update(input, context);
+         const levelAdjustmentUpdates = inventoryLevels
+             .map((level) => {
+@@ -288,7 +300,7 @@
+         return await this.deleteReservationItems_(ids, context);
+     }
+     async deleteReservationItems_(ids, context = {}) {
+-        const reservations = await this.reservationItemService_.list({ id: ids }, {}, context);
++        const reservations = await context.transactionManager.find((0, utils_1.toMikroORMEntity)(_models_1.ReservationItem), { id: ids, deleted_at: null }, { lockMode: 3, refresh: true, orderBy: { id: "ASC" }, filters: false });
+         await super.deleteReservationItems(ids, context);
+         await this.adjustInventoryLevelsForReservationsDeletion(reservations, context);
+     }
+@@ -297,7 +309,7 @@
+         return await this.softDeleteReservationItems_(ids, config, context);
+     }
+     async softDeleteReservationItems_(ids, config, context = {}) {
+-        const reservations = await this.reservationItemService_.list({ id: ids }, {}, context);
++        const reservations = await context.transactionManager.find((0, utils_1.toMikroORMEntity)(_models_1.ReservationItem), { id: ids, deleted_at: null }, { lockMode: 3, refresh: true, orderBy: { id: "ASC" }, filters: false });
+         await super.softDeleteReservationItems(ids, config, context);
+         await this.adjustInventoryLevelsForReservationsDeletion(reservations, context);
+     }
+@@ -306,7 +318,7 @@
+         return await this.restoreReservationItems_(ids, config, context);
+     }
+     async restoreReservationItems_(ids, config, context = {}) {
+-        const reservations = await this.reservationItemService_.list({ id: ids, deleted_at: { $ne: null } }, { withDeleted: true }, context);
++        const reservations = await context.transactionManager.find((0, utils_1.toMikroORMEntity)(_models_1.ReservationItem), { id: ids, deleted_at: { $ne: null } }, { lockMode: 3, refresh: true, orderBy: { id: "ASC" }, filters: false });
+         await super.restoreReservationItems({ id: ids }, config, context);
+         await this.adjustInventoryLevelsForReservationsRestore(reservations, context);
+     }
+@@ -314,7 +326,7 @@
+         return await this.deleteReservationItemByLocationId_(locationId, context);
+     }
+     async deleteReservationItemByLocationId_(locationId, context = {}) {
+-        const reservations = await this.reservationItemService_.list({ location_id: locationId }, {}, context);
++        const reservations = await context.transactionManager.find((0, utils_1.toMikroORMEntity)(_models_1.ReservationItem), { location_id: locationId, deleted_at: null }, { lockMode: 3, refresh: true, orderBy: { id: "ASC" }, filters: false });
+         await this.reservationItemService_.softDelete({ location_id: locationId }, context);
+         await this.adjustInventoryLevelsForReservationsDeletion(reservations, context);
+     }
+@@ -327,7 +339,7 @@
+         return await this.deleteReservationItemsByLineItem_(lineItemId, context);
+     }
+     async deleteReservationItemsByLineItem_(lineItemId, context = {}) {
+-        const reservations = await this.reservationItemService_.list({ line_item_id: lineItemId }, {}, context);
++        const reservations = await context.transactionManager.find((0, utils_1.toMikroORMEntity)(_models_1.ReservationItem), { line_item_id: lineItemId, deleted_at: null }, { lockMode: 3, refresh: true, orderBy: { id: "ASC" }, filters: false });
+         await this.reservationItemService_.softDelete({ line_item_id: lineItemId }, context);
+         await this.adjustInventoryLevelsForReservationsDeletion(reservations, context);
+     }
+@@ -340,7 +352,7 @@
+         return await this.restoreReservationItemsByLineItem_(lineItemId, context);
+     }
+     async restoreReservationItemsByLineItem_(lineItemId, context = {}) {
+-        const reservations = await this.reservationItemService_.list({ line_item_id: lineItemId, deleted_at: { $ne: null } }, { withDeleted: true }, context);
++        const reservations = await context.transactionManager.find((0, utils_1.toMikroORMEntity)(_models_1.ReservationItem), { line_item_id: lineItemId, deleted_at: { $ne: null } }, { lockMode: 3, refresh: true, orderBy: { id: "ASC" }, filters: false });
+         await this.reservationItemService_.restore({ line_item_id: lineItemId }, context);
+         await this.adjustInventoryLevelsForReservationsRestore(reservations, context);
+     }
+@@ -355,21 +367,31 @@
+                 },
+             ];
+         }
++        const results = await this.adjustInventoryBatch_(all, context);
++        return await this.baseRepository_.serialize(Array.isArray(inventoryItemIdOrData) ? results : results[0]);
++    }
++    async adjustInventoryBatch_(all, context = {}) {
++        // One transaction owns the entire debit batch. Lock every component in
++        // stable row order before the first write, including multi-item kits.
++        if (all.length) await this.ensureInventoryLevels(all.map((entry) => ({ inventory_item_id: entry.inventoryItemId, location_id: entry.locationId })), undefined, context);
+         const results = [];
+         for (const data of all) {
+-            const result = await this.adjustInventory_(data.inventoryItemId, data.locationId, data.adjustment, context);
+-            results.push(result);
+-        }
+-        return await this.baseRepository_.serialize(Array.isArray(inventoryItemIdOrData) ? results : results[0]);
++            results.push(await this.adjustInventory_(data.inventoryItemId, data.locationId, data.adjustment, context));
++        }
++        return results;
+     }
+     async adjustInventory_(inventoryItemId, locationId, adjustment, context = {}) {
+-        const [inventoryLevel] = await this.inventoryLevelService_.list({ inventory_item_id: inventoryItemId, location_id: locationId }, {}, context);
++        const [inventoryLevel] = await this.ensureInventoryLevels([{ inventory_item_id: inventoryItemId, location_id: locationId }], undefined, context);
+         if (!inventoryLevel) {
+             throw new utils_1.MedusaError(utils_1.MedusaError.Types.NOT_FOUND, `Inventory level for item ${inventoryItemId} and location ${locationId} not found`);
+         }
++        const stocked = utils_1.MathBN.add(inventoryLevel.raw_stocked_quantity ?? inventoryLevel.stocked_quantity, adjustment);
++        // Negative adjustments are legitimate sales/write-offs. The physical
++        // balance, unlike available balance with backorders, cannot go below 0.
++        if (utils_1.MathBN.lt(stocked, 0)) throw new utils_1.MedusaError(utils_1.MedusaError.Types.NOT_ALLOWED, "Physical inventory cannot be negative");
+         const result = await this.inventoryLevelService_.update({
+             id: inventoryLevel.id,
+-            stocked_quantity: utils_1.MathBN.add(inventoryLevel.stocked_quantity, adjustment),
++            stocked_quantity: stocked,
+         }, context);
+         return result;
+     }
+@@ -459,7 +481,9 @@
+         const inventoryLevels = await this.ensureInventoryLevels(reservations.map((r) => ({
+             inventory_item_id: r.inventory_item_id,
+             location_id: r.location_id,
+-        })), undefined, context);
++            quantity: isDelete ? 0 : r.quantity,
++            allow_backorder: r.allow_backorder,
++        })), { validateQuantityAtLocation: !isDelete }, context);
+         const inventoryLevelAdjustments = reservations.reduce((acc, curr) => {
+             const inventoryLevelMap = acc.get(curr.inventory_item_id) ?? new Map();
+             const adjustment = inventoryLevelMap.has(curr.location_id)
+@@ -707,6 +731,13 @@
+ ], InventoryModuleService.prototype, "adjustInventory", null);
+ __decorate([
+     (0, utils_1.InjectTransactionManager)(),
++    __param(1, (0, utils_1.MedusaContext)()),
++    __metadata("design:type", Function),
++    __metadata("design:paramtypes", [Array, Object]),
++    __metadata("design:returntype", Promise)
++], InventoryModuleService.prototype, "adjustInventoryBatch_", null);
++__decorate([
++    (0, utils_1.InjectTransactionManager)(),
+     __param(3, (0, utils_1.MedusaContext)()),
+     __metadata("design:type", Function),
+     __metadata("design:paramtypes", [String, String, Object, Object]),

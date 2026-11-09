@@ -1,9 +1,18 @@
+import Medusa from "@medusajs/js-sdk"
+import { expireCustomerSession } from "./lib/util/customer-session"
 import { HttpTypes } from "@medusajs/types"
 import { NextRequest, NextResponse } from "next/server"
 
 const BACKEND_URL = process.env.MEDUSA_INTERNAL_BACKEND_URL || process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL
 const PUBLISHABLE_API_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
 const DEFAULT_REGION = process.env.NEXT_PUBLIC_DEFAULT_REGION || "dk"
+
+const sessionSdk = new Medusa({
+  baseUrl: BACKEND_URL || "http://localhost:9000",
+  publishableKey: PUBLISHABLE_API_KEY,
+  auth: { type: "jwt", jwtTokenStorageMethod: "nostore" },
+  debug: false,
+})
 
 const regionMapCache = {
   regionMap: new Map<string, HttpTypes.StoreRegion>(),
@@ -92,6 +101,18 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  const expiredCookies = await expireCustomerSession(request.cookies, (token) =>
+    sessionSdk.store.customer.retrieve({ fields: "id" }, { authorization: `Bearer ${token}` })
+  )
+  // Override cookies for this render as well as expiring them in the browser.
+  const forwardedRequest = expiredCookies.length
+    ? { request: { headers: new Headers(request.headers) } }
+    : undefined
+  const finish = (response: NextResponse) => {
+    expiredCookies.forEach((name) => response.cookies.delete(name))
+    return response
+  }
+
   const cacheIdCookie = request.cookies.get("_medusa_cache_id")
   const cacheId = cacheIdCookie?.value || crypto.randomUUID()
 
@@ -107,14 +128,14 @@ export async function middleware(request: NextRequest) {
   // crawlers get the storefront content directly from the root URL.
   if (urlHasCountry || request.nextUrl.pathname === "/") {
     const response = urlHasCountry
-      ? NextResponse.next()
-      : NextResponse.rewrite(new URL(`/${country}`, request.url))
+      ? NextResponse.next(forwardedRequest)
+      : NextResponse.rewrite(new URL(`/${country}`, request.url), forwardedRequest)
     if (!cacheIdCookie) {
       response.cookies.set("_medusa_cache_id", cacheId, {
         maxAge: 60 * 60 * 24,
       })
     }
-    return response
+    return finish(response)
   }
 
   // if the url doesn't have the country, redirect to it
@@ -123,7 +144,7 @@ export async function middleware(request: NextRequest) {
   const queryString = request.nextUrl.search || ""
   const redirectUrl = `${request.nextUrl.origin}/${country}${redirectPath}${queryString}`
 
-  return NextResponse.redirect(redirectUrl, 307)
+  return finish(NextResponse.redirect(redirectUrl, 307))
 }
 
 export const config = {

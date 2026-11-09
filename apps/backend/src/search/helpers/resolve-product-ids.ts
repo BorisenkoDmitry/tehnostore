@@ -12,6 +12,36 @@ function payloadIds(data: unknown): string[] {
     .filter((id): id is string => Boolean(id));
 }
 
+async function priceListProductIds(
+  query: RemoteQueryFunction,
+  data: unknown,
+  withDeleted: boolean,
+): Promise<string[]> {
+  const entries = (Array.isArray(data) ? data : [data]) as { id?: string; price_set_ids?: string[] }[]
+  const setIds = new Set(entries.flatMap((entry) => entry?.price_set_ids ?? []))
+  const listIds = payloadIds(entries.filter((entry) => !entry?.price_set_ids))
+  if (listIds.length) {
+    for (let skip = 0; ; skip += RESOLVE_BATCH_SIZE) {
+      const { data: prices } = await query.graph({
+        entity: "price", fields: ["price_set_id"], filters: { price_list_id: listIds },
+        withDeleted, pagination: { skip, take: RESOLVE_BATCH_SIZE, order: { id: "ASC" } },
+      })
+      for (const price of prices) if (price?.price_set_id) setIds.add(price.price_set_id)
+      if (prices.length < RESOLVE_BATCH_SIZE) break
+    }
+  }
+  const priceSetIds = [...setIds]
+  const productIds = new Set<string>()
+  for (let offset = 0; offset < priceSetIds.length; offset += RESOLVE_BATCH_SIZE) {
+    const { data: links } = await query.graph({
+      entity: "product_variant_price_set", fields: ["variant.product_id"],
+      filters: { price_set_id: priceSetIds.slice(offset, offset + RESOLVE_BATCH_SIZE) },
+    })
+    for (const link of links) if (link?.variant?.product_id) productIds.add(link.variant.product_id)
+  }
+  return [...productIds]
+}
+
 /**
  * The products behind rows of another entity, read through `query.graph`.
  * Deleted rows are soft-deleted, so they're still readable with `withDeleted`,
@@ -32,7 +62,10 @@ async function relatedProductIds(
     withDeleted,
   });
 
-  return (data as Record<string, any>[])
+  // A hard-deleted relation can be emitted after its parent is removed. The
+  // graph returns an empty slot for that identity even with withDeleted=true.
+  return (data as (Record<string, any> | null | undefined)[])
+    .filter((row): row is Record<string, any> => row != null)
     .flatMap(pick)
     .filter((id): id is string => Boolean(id));
 }
@@ -124,17 +157,27 @@ export async function resolveProductIds(
         (row) => (row.products ?? []).map((product: any) => product?.id),
         deleted,
       );
-    case "product-category":
+    case "product-category": {
+      const { data: categories } = await query.graph({ entity: "product_category", fields: ["id", "parent_category_id"], withDeleted: deleted, pagination: { take: 1000 } })
+      const descendants = new Set(ids)
+      for (let depth = 0; depth < 20; depth++) {
+        const before = descendants.size
+        for (const category of categories) if (category?.parent_category_id && descendants.has(category.parent_category_id)) descendants.add(category.id)
+        if (before === descendants.size) break
+      }
       return relatedProductIds(
         query,
         "product_category",
         ["products.id"],
-        ids,
+        [...descendants],
         (row) => (row.products ?? []).map((product: any) => product?.id),
         deleted,
       );
+    }
     case "sales-channel":
       return productIdsInSalesChannels(query, ids);
+    case "price-list":
+      return priceListProductIds(query, event.data, deleted)
     default:
       return [];
   }

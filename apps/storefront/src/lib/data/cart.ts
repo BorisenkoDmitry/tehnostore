@@ -15,6 +15,8 @@ import {
 } from "./cookies"
 import { getRegion } from "./regions"
 import { getLocale } from "./locale-actions"
+import { changeTexnoItem, retrieveTexnoCart } from "./texno-cart"
+import { randomUUID } from "node:crypto"
 
 /**
  * Retrieves a cart by its ID. If no ID is provided, it will use the cart ID from the cookies.
@@ -22,6 +24,10 @@ import { getLocale } from "./locale-actions"
  * @returns The cart object if found, or null if not found.
  */
 export async function retrieveCart(cartId?: string, fields?: string) {
+  if (!cartId) {
+    const texno = await retrieveTexnoCart()
+    if (texno) return texno.order || texno.cart.completed_at ? null : { ...texno.cart, metadata: { texno_checkout: true } }
+  }
   const id = cartId || (await getCartId())
   fields ??=
     "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
@@ -117,7 +123,6 @@ export async function updateCart(data: HttpTypes.StoreUpdateCart) {
 export async function addToCart({
   variantId,
   quantity,
-  countryCode,
 }: {
   variantId: string
   quantity: number
@@ -127,34 +132,10 @@ export async function addToCart({
     throw new Error("Missing variant ID when adding to cart")
   }
 
-  const cart = await getOrSetCart(countryCode)
+  const result = await changeTexnoItem({ variant_id: variantId, quantity, mutation_id: randomUUID(), add: true })
+  if (result.error) throw new Error(result.error)
+  return result.state?.cart
 
-  if (!cart) {
-    throw new Error("Error retrieving or creating cart")
-  }
-
-  const headers = {
-    ...(await getAuthHeaders()),
-  }
-
-  await sdk.store.cart
-    .createLineItem(
-      cart.id,
-      {
-        variant_id: variantId,
-        quantity,
-      },
-      {},
-      headers
-    )
-    .then(async () => {
-      const cartCacheTag = await getCacheTag("carts")
-      revalidateTag(cartCacheTag, { expire: 0 })
-
-      const fulfillmentCacheTag = await getCacheTag("fulfillment")
-      revalidateTag(fulfillmentCacheTag, { expire: 0 })
-    })
-    .catch(medusaError)
 }
 
 export async function updateLineItem({

@@ -21,11 +21,10 @@ const HitPrice = ({ hit, currencyCode }: HitPriceProps) => {
   const original_price = amount(
     hit[priceAttribute("original_price", currencyCode)]
   )
-  const on_sale = hit[priceAttribute("on_sale", currencyCode)] === true
-
   if (min_price === null) {
     return null
   }
+  const discounted = original_price !== null && original_price > min_price
 
   const format = (value: number) =>
     convertToLocale({ amount: value, currency_code })
@@ -35,7 +34,7 @@ const HitPrice = ({ hit, currencyCode }: HitPriceProps) => {
 
   return (
     <div className="flex items-center gap-x-2" data-testid="product-price">
-      {!isRange && on_sale && original_price !== null && (
+      {!isRange && discounted && (
         <Text
           className="line-through text-ui-fg-muted"
           data-testid="original-price"
@@ -45,7 +44,7 @@ const HitPrice = ({ hit, currencyCode }: HitPriceProps) => {
       )}
       <Text
         className={clx("text-ui-fg-muted", {
-          "text-ui-tag-red-text": on_sale,
+          "text-ui-tag-red-text": discounted,
         })}
         data-testid="price"
       >

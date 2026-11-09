@@ -61,3 +61,10 @@ output/
 ehthumbs.db
 Thumbs.db
 **/.DS_Store
+
+# Local private documents are data, never release source.
+/apps/private-files/
+/apps/backend/private-files/
+
+# Generated TypeScript cache
+*.tsbuildinfo

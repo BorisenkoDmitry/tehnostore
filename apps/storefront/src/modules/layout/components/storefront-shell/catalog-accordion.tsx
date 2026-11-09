@@ -1,6 +1,6 @@
 "use client"
 
-import { ReactNode, useId, useState } from "react"
+import { ReactNode, useEffect, useId, useState } from "react"
 
 export default function CatalogAccordion({ label, children, className, defaultOpen = false }: {
   label: ReactNode
@@ -9,6 +9,7 @@ export default function CatalogAccordion({ label, children, className, defaultOp
   defaultOpen?: boolean
 }) {
   const [open, setOpen] = useState(defaultOpen)
+  useEffect(() => { if (defaultOpen) setOpen(true) }, [defaultOpen])
   const id = useId()
   return <div className={`${className} texno-accordion ${open ? "is-open" : ""}`}>
     <button type="button" className="texno-accordion-trigger" aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>{label}</button>

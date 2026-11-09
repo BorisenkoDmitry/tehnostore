@@ -1,5 +1,6 @@
 import type { SearchTypes } from "@medusajs/framework/types";
 import { QueryContext, search } from "@medusajs/framework/utils";
+import { catalogComparisonPrice, saleOriginalPrice, type CatalogCalculatedPrice } from "../../lib/catalog-sale-price"
 
 /**
  * The currencies the index holds prices in. Each gets its own set of price
@@ -7,7 +8,7 @@ import { QueryContext, search } from "@medusajs/framework/utils";
  * change: the module reindexes on the next boot. Keep in sync with the
  * storefront's `SEARCH_PRICE_CURRENCIES`.
  */
-export const PRICE_CURRENCIES = ["eur", "usd"] as const;
+export const PRICE_CURRENCIES = ["eur", "usd", "rub"] as const;
 
 export type PriceCurrency = (typeof PRICE_CURRENCIES)[number];
 
@@ -15,21 +16,19 @@ export type PriceCurrency = (typeof PRICE_CURRENCIES)[number];
 // currency per query.
 const PRICE_GRAPH_FIELDS = [
   "id",
-  "variants.calculated_price.calculated_amount",
-  "variants.calculated_price.original_amount",
+  "variants.calculated_price.*",
+  "variants.metadata",
 ];
 
-const pricingContext = (currency: PriceCurrency) => ({
+const pricingContext = (currency: PriceCurrency, regionId?: string) => ({
   variants: {
-    calculated_price: QueryContext({ currency_code: currency }),
+    calculated_price: QueryContext({ currency_code: currency, quantity: 1, ...(regionId ? { region_id: regionId } : {}) }),
   },
 });
 
 type PricedVariant = {
-  calculated_price?: {
-    calculated_amount?: number | null;
-    original_amount?: number | null;
-  } | null;
+  metadata?: Record<string, unknown> | null;
+  calculated_price?: CatalogCalculatedPrice | null;
   [key: string]: unknown;
 } | null;
 
@@ -39,7 +38,7 @@ export type ProductPricingRows = Partial<
 >;
 
 type PriceFieldName =
-  `${"min_price" | "max_price" | "original_price"}_${PriceCurrency}`;
+  `${"min_price" | "max_price" | "original_price" | "min_sale_price" | "original_sale_price"}_${PriceCurrency}`;
 type OnSaleFieldName = `on_sale_${PriceCurrency}`;
 
 export type ProductPricing = { [K in PriceFieldName]?: number | null } & {
@@ -72,6 +71,8 @@ export const priceFields = Object.fromEntries(
         .retrievable(),
     ],
     [`original_price_${currency}`, search.float().retrievable()],
+    [`min_sale_price_${currency}`, search.float().filterable().sortable().facetable({ types: ["stats"] }).retrievable()],
+    [`original_sale_price_${currency}`, search.float().retrievable()],
     [
       `on_sale_${currency}`,
       search.boolean().filterable().facetable().retrievable(),
@@ -91,6 +92,7 @@ function toPricing(
   variants: PricedVariant[] | null | undefined,
 ): ProductPricing {
   let cheapest: { calculated: number; original: number } | undefined;
+  let cheapestSale: { calculated: number; original: number } | undefined;
   let maxPrice: number | undefined;
 
   for (const variant of variants ?? []) {
@@ -101,10 +103,12 @@ function toPricing(
       continue;
     }
 
-    const original =
-      typeof price?.original_amount === "number"
-        ? price.original_amount
-        : calculated;
+    const saleOriginal = saleOriginalPrice(price)
+    const comparison = catalogComparisonPrice(variant?.metadata, currency)
+    const original = saleOriginal ?? Math.max(comparison ?? calculated, calculated)
+    if (saleOriginal !== null && (!cheapestSale || calculated < cheapestSale.calculated)) {
+      cheapestSale = { calculated, original: saleOriginal }
+    }
 
     if (maxPrice === undefined || calculated > maxPrice) {
       maxPrice = calculated;
@@ -125,7 +129,11 @@ function toPricing(
     [`original_price_${currency}`]: cheapest.original,
     // Written even when false: "not on sale" is a real facet bucket, unlike a
     // missing value.
-    [`on_sale_${currency}`]: cheapest.original > cheapest.calculated,
+    [`on_sale_${currency}`]: Boolean(cheapestSale),
+    ...(cheapestSale ? {
+      [`min_sale_price_${currency}`]: cheapestSale.calculated,
+      [`original_sale_price_${currency}`]: cheapestSale.original,
+    } : {}),
   } as ProductPricing;
 }
 
@@ -148,6 +156,7 @@ export function toProductPricing(
 export async function loadPricing(
   ids: string[],
   { container }: SearchTypes.SearchIngestionContext,
+  region?: { id: string; currency_code: string },
 ): Promise<Map<string, ProductPricingRows>> {
   const pricing = new Map<string, ProductPricingRows>();
 
@@ -161,7 +170,7 @@ export async function loadPricing(
         entity: "product",
         fields: PRICE_GRAPH_FIELDS,
         filters: { id: ids },
-        context: pricingContext(currency),
+        context: pricingContext(currency, region?.currency_code === currency ? region.id : undefined),
       });
 
       for (const product of data) {

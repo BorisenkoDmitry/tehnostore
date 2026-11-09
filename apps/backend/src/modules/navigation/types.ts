@@ -4,6 +4,8 @@ export type CatalogNode = {
   label: string
   href: string
   visible: boolean
+  category_id?: string
+  category_shortcut?: boolean
 }
 
 export type NavigationItem = {

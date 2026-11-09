@@ -1,71 +1,17 @@
 "use client"
-
-import React from "react"
+import { useActionState } from "react"
+import { HttpTypes } from "@medusajs/types"
+import { updateCustomerPassword } from "@lib/data/customer"
 import Input from "@modules/common/components/input"
 import AccountInfo from "../account-info"
-import { HttpTypes } from "@medusajs/types"
-// TODO: Re-add toast notifications when Toaster component is implemented
-
-type MyInformationProps = {
-  customer: HttpTypes.StoreCustomer
+import { safeAccountAction } from "../../lib/actions"
+const ProfilePassword = ({ customer: _customer }: { customer: HttpTypes.StoreCustomer }) => {
+  const [state, action] = useActionState(safeAccountAction(updateCustomerPassword, { success: false, error: "Связь прервалась. Повторите попытку. Если пароль уже изменён, используйте новый пароль." }), { success: false, error: null as string | null })
+  return <form action={action} className="w-full"><AccountInfo label="Пароль" currentInfo="Не отображается" isSuccess={state.success} isError={Boolean(state.error)} errorMessage={state.error ?? undefined} clearState={() => {}} data-testid="account-password-editor">
+    <Input label="Текущий пароль" name="old_password" type="password" autoComplete="current-password" required maxLength={256} data-testid="old-password-input" />
+    <Input label="Новый пароль" name="new_password" type="password" autoComplete="new-password" required minLength={8} maxLength={128} data-testid="new-password-input" />
+    <Input label="Повторите новый пароль" name="confirm_password" type="password" autoComplete="new-password" required minLength={8} maxLength={128} data-testid="confirm-password-input" />
+    <p className="text-sm text-ui-fg-subtle">От 8 символов. Для изменения нужен текущий пароль.</p>
+  </AccountInfo></form>
 }
-
-const ProfilePassword: React.FC<MyInformationProps> = ({ customer: _customer }) => {
-  const [successState, setSuccessState] = React.useState(false)
-
-  // TODO: Add support for password updates
-  const updatePassword = async () => {
-    // TODO: Re-add toast notification when Toaster component is implemented
-    console.info("Password update is not implemented")
-  }
-
-  const clearState = () => {
-    setSuccessState(false)
-  }
-
-  return (
-    <form
-      action={updatePassword}
-      onReset={() => clearState()}
-      className="w-full"
-    >
-      <AccountInfo
-        label="Password"
-        currentInfo={
-          <span>The password is not shown for security reasons</span>
-        }
-        isSuccess={successState}
-        isError={false}
-        errorMessage={undefined}
-        clearState={clearState}
-        data-testid="account-password-editor"
-      >
-        <div className="grid grid-cols-2 gap-4">
-          <Input
-            label="Old password"
-            name="old_password"
-            required
-            type="password"
-            data-testid="old-password-input"
-          />
-          <Input
-            label="New password"
-            type="password"
-            name="new_password"
-            required
-            data-testid="new-password-input"
-          />
-          <Input
-            label="Confirm password"
-            type="password"
-            name="confirm_password"
-            required
-            data-testid="confirm-password-input"
-          />
-        </div>
-      </AccountInfo>
-    </form>
-  )
-}
-
 export default ProfilePassword

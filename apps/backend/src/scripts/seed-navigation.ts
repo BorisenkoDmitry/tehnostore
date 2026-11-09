@@ -3,9 +3,11 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { NAVIGATION_MODULE } from "../modules/navigation"
 import NavigationModuleService from "../modules/navigation/service"
 import { saveNavigationWorkflow } from "../workflows/save-navigation"
-import catalogNodes from "./data/catalog-navigation.json"
+import { readSeedData } from "../lib/seed-data"
+import type { CatalogNode } from "../modules/navigation/types"
 
 export default async function seedNavigation({ container }: ExecArgs) {
+  const catalogNodes = readSeedData<CatalogNode[]>("catalog-navigation.json")
   const service = container.resolve<NavigationModuleService>(NAVIGATION_MODULE)
   const [existing] = await service.listSiteNavigations({ key: "main" })
   if (existing) return

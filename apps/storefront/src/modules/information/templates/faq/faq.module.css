@@ -1,0 +1,164 @@
+.page {
+  color: var(--texno-ink);
+}
+.hero.hero {
+  display: block;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+}
+.heroInner {
+  position: relative;
+  padding-top: 24px;
+  padding-bottom: 64px;
+}
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.breadcrumbs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.breadcrumbs a:hover {
+  text-decoration: underline;
+  text-underline-offset: 5px;
+}
+.hero .heroCopy {
+  width: 100%;
+  padding: 48px 0 0;
+}
+.hero .heroCopy p {
+  max-width: 56ch;
+}
+.list {
+  width: 100%;
+}
+.item {
+  border-top: 1px solid #d8e0e8;
+}
+.item:last-child {
+  border-bottom: 1px solid #d8e0e8;
+}
+.question {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  min-height: 88px;
+  padding-block: 24px;
+  list-style: none;
+  cursor: pointer;
+}
+.question::-webkit-details-marker {
+  display: none;
+}
+.question h2 {
+  font-size: clamp(20px, 1.8cqw, 26px);
+  line-height: 1.4;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.question:hover {
+  color: var(--texno-blue);
+}
+.question:focus-visible,
+.breadcrumbs a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 5px;
+  border-radius: 2px;
+}
+.indicator {
+  position: relative;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  color: var(--texno-blue);
+}
+.indicator::before,
+.indicator::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 11px;
+  width: 16px;
+  height: 2px;
+  background: currentColor;
+}
+.indicator::after {
+  transform: rotate(90deg);
+  transition: transform 200ms var(--texno-ease);
+}
+.item[open] .indicator::after {
+  transform: rotate(0);
+}
+.answer {
+  padding: 0 0 32px;
+}
+.answer p {
+  max-width: none;
+  color: #526170;
+  font-size: 16px;
+  line-height: 1.8;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .item {
+    interpolate-size: allow-keywords;
+  }
+  .item::details-content {
+    block-size: 0;
+    overflow: clip;
+    transition: block-size 280ms var(--texno-ease), content-visibility 280ms allow-discrete;
+  }
+  .item[open]::details-content {
+    block-size: auto;
+  }
+  .page [data-information-state="pending"],
+  .page [data-information-state="revealing"] {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .indicator::after {
+    transition: none;
+  }
+}
+@container storefront (max-width: 700px) {
+  .heroInner {
+    padding-top: 14px;
+    padding-bottom: 40px;
+  }
+  .hero .heroCopy {
+    padding-top: 34px;
+  }
+  .hero .heroCopy h1 {
+    font-size: clamp(37px, 8.5cqw, 54px);
+  }
+  .hero .heroCopy p {
+    max-width: 34ch;
+    font-size: 15px;
+  }
+  .desktopBreak {
+    display: none;
+  }
+  .question {
+    gap: 20px;
+    min-height: 88px;
+    padding-block: 22px;
+  }
+  .question h2 {
+    font-size: 20px;
+  }
+  .answer {
+    padding-bottom: 28px;
+  }
+  .answer p {
+    font-size: 15px;
+  }
+}

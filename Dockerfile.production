@@ -6,18 +6,23 @@ RUN apk add --no-cache libc6-compat \
 WORKDIR /server
 ENV MEDUSA_DISABLE_TELEMETRY=true NEXT_TELEMETRY_DISABLED=1
 
-FROM base AS dependencies
-RUN apk add --no-cache python3 make g++ git
+FROM node:24-alpine AS dependencies
+RUN apk add --no-cache python3 make g++ git libc6-compat \
+  && corepack enable \
+  && corepack prepare pnpm@10.11.1 --activate
+WORKDIR /server
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches ./patches
 COPY apps/backend/package.json apps/backend/package.json
 COPY apps/storefront/package.json apps/storefront/package.json
-RUN --mount=type=cache,id=tehnostore-production-pnpm,target=/pnpm/store \
+RUN --mount=type=cache,id=texno-pnpm,target=/pnpm/store \
   pnpm config set store-dir /pnpm/store \
   && pnpm install --frozen-lockfile
 
 # Explicit source copies keep deployment credentials and local .env files out
 # of every image layer, independently of the development .dockerignore.
 FROM dependencies AS source
+ENV MEDUSA_DISABLE_TELEMETRY=true NEXT_TELEMETRY_DISABLED=1
 COPY eslint.config.ts ./
 COPY apps/backend/src ./apps/backend/src
 COPY apps/backend/medusa-config.ts apps/backend/tsconfig.json apps/backend/instrumentation.ts apps/backend/eslint.config.ts ./apps/backend/
@@ -27,7 +32,7 @@ COPY apps/storefront/check-env-variables.js apps/storefront/next-env.d.ts apps/s
 
 FROM source AS backend-build
 WORKDIR /server/apps/backend
-ARG NEXT_PUBLIC_MEDUSA_BACKEND_URL=https://tehnostore.dmitriy-borisenko.ru
+ARG NEXT_PUBLIC_MEDUSA_BACKEND_URL=http://localhost:9000
 # These are compile-only placeholders. Runtime secrets come from Compose.
 RUN NODE_ENV=production \
   JWT_SECRET=compile-only-placeholder-not-a-runtime-secret \
@@ -50,8 +55,8 @@ CMD ["node", "/server/apps/backend/node_modules/@medusajs/cli/cli.js", "start", 
 
 FROM source AS storefront-build
 WORKDIR /server/apps/storefront
-ARG NEXT_PUBLIC_MEDUSA_BACKEND_URL=https://tehnostore.dmitriy-borisenko.ru
-ARG NEXT_PUBLIC_BASE_URL=https://tehnostore.dmitriy-borisenko.ru
+ARG NEXT_PUBLIC_MEDUSA_BACKEND_URL=http://localhost:9000
+ARG NEXT_PUBLIC_BASE_URL=http://localhost:9000
 ARG NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_DEFAULT_REGION=dk
 ARG MEDUSA_BUILD_BACKEND_URL=http://host.docker.internal:9000

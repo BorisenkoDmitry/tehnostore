@@ -1,8 +1,8 @@
-import source from "../../data/source-preview.json"
+import { getContentReviews } from "@lib/data/content"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { StoreIcon } from "@modules/layout/components/storefront-shell/icons"
 
-type Review = (typeof source.reviews)[number]
+type Review = { id: string; date: string; name: string; initials: string; rating: number; text: string }
 
 function ReviewCard({ review }: { review: Review }) {
   const [day, month, year] = review.date.split(".")
@@ -13,17 +13,18 @@ function ReviewCard({ review }: { review: Review }) {
   </figure></li>
 }
 
-export function ReviewsList({ limit }: { limit?: number }) {
-  const reviews = limit === undefined ? source.reviews : source.reviews.slice(0, limit)
-  return <ul className="texno-review-grid">{reviews.map((review) => <ReviewCard key={`${review.name}-${review.date}`} review={review} />)}</ul>
+export async function ReviewsList({ limit }: { limit?: number }) {
+  const entries = await getContentReviews("shop", undefined, limit)
+  const reviews = entries.map((review) => ({ id: review.id, name: review.author, initials: review.author.split(/\s+/).slice(0, 2).map((part) => part[0]).join(""), rating: review.rating, text: review.body, date: /^\d{4}-\d{2}-\d{2}/.test(review.review_date) ? new Date(review.review_date).toLocaleDateString("ru-RU", { timeZone: "Europe/Moscow" }) : review.review_date }))
+  return <ul className="texno-review-grid">{reviews.map((review) => <ReviewCard key={review.id} review={review} />)}</ul>
 }
 
-export default function StoreReviews() {
+export default function StoreReviews({ title, link_label }: { title: string; link_label: string }) {
   return <section id="reviews" className="texno-reviews texno-section" aria-labelledby="reviews-heading">
     <div className="texno-container">
-      <div className="texno-section-heading"><h2 id="reviews-heading">Отзывы покупателей</h2></div>
+      <div className="texno-section-heading"><h2 id="reviews-heading">{title}</h2></div>
       <ReviewsList limit={3} />
-      <div className="texno-all-reviews"><LocalizedClientLink href="/page/reviews" className="texno-text-link">Все отзывы <StoreIcon name="arrow" /></LocalizedClientLink></div>
+      <div className="texno-all-reviews"><LocalizedClientLink href="/page/reviews" className="texno-text-link">{link_label} <StoreIcon name="arrow" /></LocalizedClientLink></div>
     </div>
   </section>
 }

@@ -10,18 +10,22 @@ import { HttpTypes } from "@medusajs/types"
 import CountrySelect from "@modules/checkout/components/country-select"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
 import Input from "@modules/common/components/input"
+import { useRouter } from "next/navigation"
 import Modal from "@modules/common/components/modal"
+import { safeAccountAction } from "../../lib/actions"
 
 const AddAddress = ({
   region,
+  addresses,
 }: {
   region: HttpTypes.StoreRegion
   addresses: HttpTypes.StoreCustomerAddress[]
 }) => {
   const [successState, setSuccessState] = useState(false)
+  const router = useRouter()
   const { state, open, close: closeModal } = useToggleState(false)
 
-  const [formState, formAction] = useActionState(addCustomerAddress, {
+  const [formState, formAction] = useActionState(safeAccountAction(addCustomerAddress, { success: false, error: "Связь прервалась. Обновите адреса перед повторным сохранением." }), {
     success: false,
     error: null,
   } as { success: boolean; error: string | null })
@@ -41,97 +45,64 @@ const AddAddress = ({
   useEffect(() => {
     if (formState.success) {
       setSuccessState(true)
+      router.refresh()
     }
-  }, [formState])
+  }, [formState, router])
 
   return (
     <>
       <button
+        type="button"
         className="border border-ui-border-base rounded-rounded p-5 min-h-[220px] h-full w-full flex flex-col justify-between"
         onClick={open}
         data-testid="add-address-button"
       >
-        <span className="text-base-semi">New address</span>
+        <span className="text-base-semi">Добавить адрес</span>
         <Plus />
       </button>
 
       <Modal isOpen={state} close={close} data-testid="add-address-modal">
         <Modal.Title>
-          <Heading className="mb-2">Add address</Heading>
+          <Heading className="mb-2">Новый адрес</Heading>
         </Modal.Title>
-        <form action={formAction}>
+        <form action={formAction} className="min-h-0 flex flex-1 flex-col">
           <Modal.Body>
-            <div className="flex flex-col gap-y-2">
-              <div className="grid grid-cols-2 gap-x-2">
-                <Input
-                  label="First name"
-                  name="first_name"
-                  required
-                  autoComplete="given-name"
-                  data-testid="first-name-input"
-                />
-                <Input
-                  label="Last name"
-                  name="last_name"
-                  required
-                  autoComplete="family-name"
-                  data-testid="last-name-input"
-                />
-              </div>
+            <div className="flex flex-col w-full gap-y-3">
               <Input
-                label="Company"
-                name="company"
-                autoComplete="organization"
-                data-testid="company-input"
-              />
-              <Input
-                label="Address"
+                label="Улица и номер дома"
                 name="address_1"
                 required
                 autoComplete="address-line1"
                 data-testid="address-1-input"
               />
               <Input
-                label="Apartment, suite, etc."
+                label="Квартира, подъезд, этаж"
                 name="address_2"
                 autoComplete="address-line2"
                 data-testid="address-2-input"
               />
-              <div className="grid grid-cols-[144px_1fr] gap-x-2">
-                <Input
-                  label="Postal code"
-                  name="postal_code"
-                  required
-                  autoComplete="postal-code"
-                  data-testid="postal-code-input"
-                />
-                <Input
-                  label="City"
-                  name="city"
-                  required
-                  autoComplete="locality"
-                  data-testid="city-input"
-                />
-              </div>
               <Input
-                label="Province / State"
+                label="Город"
+                name="city"
+                required
+                autoComplete="locality"
+                data-testid="city-input"
+              />
+              <Input
+                label="Область или регион"
                 name="province"
                 autoComplete="address-level1"
                 data-testid="state-input"
               />
-              <CountrySelect
+              <CountrySelect aria-label="Страна" placeholder="Страна"
+                defaultValue={region.countries?.[0]?.iso_2}
                 region={region}
                 name="country_code"
                 required
                 autoComplete="country"
                 data-testid="country-select"
               />
-              <Input
-                label="Phone"
-                name="phone"
-                autoComplete="phone"
-                data-testid="phone-input"
-              />
+              <label className="flex items-center gap-3 text-sm min-h-11"><input type="checkbox" name="is_default_shipping" defaultChecked={!addresses.some((address) => address.is_default_shipping)} />Адрес доставки по умолчанию</label>
             </div>
             {formState.error && (
               <div
@@ -151,9 +122,9 @@ const AddAddress = ({
                 className="h-10"
                 data-testid="cancel-button"
               >
-                Cancel
+                Отмена
               </Button>
-              <SubmitButton data-testid="save-button">Save</SubmitButton>
+              <SubmitButton data-testid="save-button">Сохранить</SubmitButton>
             </div>
           </Modal.Footer>
         </form>

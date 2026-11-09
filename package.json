@@ -13,13 +13,24 @@
     "test": "turbo test",
     "backend:seed": "turbo seed --filter=@dtc/backend",
     "backend:dev": "turbo dev --filter=@dtc/backend",
-    "storefront:dev": "turbo dev --filter=@dtc/storefront"
+    "storefront:dev": "turbo dev --filter=@dtc/storefront",
+    "qa": "node qa/run.cjs"
   },
   "pnpm": {
     "overrides": {
       "@types/react": "19.0.5",
       "@types/react-dom": "19.0.5",
       "tsconfig-paths": "^4.2.0"
+    },
+    "patchedDependencies": {
+      "@medusajs/dashboard@2.22.3": "patches/@medusajs__dashboard@2.22.3.patch",
+      "@medusajs/medusa@2.22.3": "patches/@medusajs__medusa@2.22.3.patch",
+      "@medusajs/ui@4.2.10": "patches/@medusajs__ui@4.2.10.patch",
+      "@medusajs/framework@2.22.3": "patches/@medusajs__framework@2.22.3.patch",
+      "@medusajs/core-flows@2.22.3": "patches/@medusajs__core-flows@2.22.3.patch",
+      "@medusajs/inventory@2.22.3": "patches/@medusajs__inventory@2.22.3.patch",
+      "@medusajs/orchestration@2.22.3": "patches/@medusajs__orchestration@2.22.3.patch",
+      "@medusajs/workflow-engine-inmemory@2.22.3": "patches/@medusajs__workflow-engine-inmemory@2.22.3.patch"
     }
   },
   "devDependencies": {

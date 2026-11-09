@@ -1,87 +1,9 @@
-import { Button } from "@modules/common/components/ui"
-import { useMemo } from "react"
-
-import Thumbnail from "@modules/products/components/thumbnail"
+import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { convertToLocale } from "@lib/util/money"
-import { HttpTypes } from "@medusajs/types"
-
-type OrderCardProps = {
-  order: HttpTypes.StoreOrder
+import Thumbnail from "@modules/products/components/thumbnail"
+const OrderCard = ({ order }: { order: HttpTypes.StoreOrder }) => {
+  const details = order.metadata?.texno_order as { delivery_pricing?: string } | undefined
+  return <article className="flex flex-col" data-testid="order-card"><div className="flex flex-wrap gap-3 justify-between items-start"><h3 className="text-xl font-medium">Заказ № <span data-testid="order-display-id">{order.display_id}</span></h3><span className="text-sm text-ui-fg-subtle">{order.status === "canceled" ? "Отменён" : order.payment_status === "captured" ? "Оплачен" : "Не оплачен"}</span></div><div className="flex flex-wrap gap-x-5 gap-y-2 mt-3 mb-5 text-sm"><time data-testid="order-created-at">{new Date(order.created_at).toLocaleDateString("ru-RU")}</time><span data-testid="order-amount">{convertToLocale({ amount: order.total, currency_code: order.currency_code, locale: "ru-RU" })}</span>{details && details.delivery_pricing !== "fixed" && <span>Без согласованной стоимости доставки</span>}</div><div className="flex flex-col gap-3">{order.items?.slice(0, 3).map(item => <div key={item.id} className="flex gap-3 items-center" data-testid="order-item"><div className="w-14 shrink-0"><Thumbnail thumbnail={item.thumbnail} images={[]} size="full" /></div><p className="text-sm min-w-0"><span data-testid="item-title">{item.title}</span> · <span data-testid="item-quantity">{item.quantity} шт.</span></p></div>)}</div>{(order.items?.length ?? 0) > 3 && <p className="mt-3 text-sm text-ui-fg-subtle">Ещё {(order.items?.length ?? 0) - 3} поз.</p>}<LocalizedClientLink href={`/account/orders/details/${order.id}`} className="self-start inline-flex items-center min-h-11 underline underline-offset-4 text-sm mt-4" data-testid="order-details-link">Подробнее о заказе</LocalizedClientLink></article>
 }
-
-const OrderCard = ({ order }: OrderCardProps) => {
-  const numberOfLines = useMemo(() => {
-    return (
-      order.items?.reduce((acc, item) => {
-        return acc + item.quantity
-      }, 0) ?? 0
-    )
-  }, [order])
-
-  const numberOfProducts = useMemo(() => {
-    return order.items?.length ?? 0
-  }, [order])
-
-  return (
-    <div className="bg-white flex flex-col" data-testid="order-card">
-      <div className="uppercase text-large-semi mb-1">
-        #<span data-testid="order-display-id">{order.display_id}</span>
-      </div>
-      <div className="flex items-center divide-x divide-gray-200 text-small-regular text-ui-fg-base">
-        <span className="pr-2" data-testid="order-created-at">
-          {new Date(order.created_at).toDateString()}
-        </span>
-        <span className="px-2" data-testid="order-amount">
-          {convertToLocale({
-            amount: order.total,
-            currency_code: order.currency_code,
-          })}
-        </span>
-        <span className="pl-2">{`${numberOfLines} ${
-          numberOfLines > 1 ? "items" : "item"
-        }`}</span>
-      </div>
-      <div className="grid grid-cols-2 small:grid-cols-4 gap-4 my-4">
-        {order.items?.slice(0, 3).map((i) => {
-          return (
-            <div
-              key={i.id}
-              className="flex flex-col gap-y-2"
-              data-testid="order-item"
-            >
-              <Thumbnail thumbnail={i.thumbnail} images={[]} size="full" />
-              <div className="flex items-center text-small-regular text-ui-fg-base">
-                <span
-                  className="text-ui-fg-base font-semibold"
-                  data-testid="item-title"
-                >
-                  {i.title}
-                </span>
-                <span className="ml-2">x</span>
-                <span data-testid="item-quantity">{i.quantity}</span>
-              </div>
-            </div>
-          )
-        })}
-        {numberOfProducts > 4 && (
-          <div className="w-full h-full flex flex-col items-center justify-center">
-            <span className="text-small-regular text-ui-fg-base">
-              + {numberOfLines - 4}
-            </span>
-            <span className="text-small-regular text-ui-fg-base">more</span>
-          </div>
-        )}
-      </div>
-      <div className="flex justify-end">
-        <LocalizedClientLink href={`/account/orders/details/${order.id}`}>
-          <Button data-testid="order-details-link" variant="secondary">
-            See details
-          </Button>
-        </LocalizedClientLink>
-      </div>
-    </div>
-  )
-}
-
 export default OrderCard

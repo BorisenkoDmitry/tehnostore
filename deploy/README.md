@@ -1,36 +1,12 @@
-# Production deployment
+# Production phone-store deployment
 
-Run commands from `commerce/`. This stack is separate from `compose.yaml` and uses its own named data volumes. It requires Docker Compose/BuildKit and an existing external Docker network named `coolify`.
+Repository: https://github.com/BorisenkoDmitry/tehnostore.git
+Domain: https://tehnostore.dmitriy-borisenko.ru
 
-1. Copy `.env.production.template` to `.env.production.local` on the server. Fill independent random hex database/session secrets and the restored store's publishable key. Restrict the env file to the deployment account. Do not print or commit its contents.
-2. Validate with `docker compose --env-file .env.production.local -f compose.production.yaml config --quiet`. Build sequentially to limit memory: `COMPOSE_PARALLEL_LIMIT=1 docker compose --env-file .env.production.local -f compose.production.yaml build backend`.
-3. Start only infrastructure: `docker compose --env-file .env.production.local -f compose.production.yaml up -d postgres redis`. Restore the reviewed database backup **before starting the application**, retaining application ownership (`medusa_app`), admin password hashes, navigation, catalog, regions and publishable-key links. Copy any local uploaded files into the corresponding persistent volumes. The existing initialization script creates `medusa_app` only when PostgreSQL's volume is empty; changing env passwords does not rotate an existing database role.
-4. Run required migrations once against the restored database: `docker compose --env-file .env.production.local -f compose.production.yaml run --rm --no-deps backend node /server/apps/backend/node_modules/@medusajs/cli/cli.js db:migrate --skip-scripts`. Review any new data migrations separately; skipping scripts avoids replaying demo seeds. Start the backend with `docker compose --env-file .env.production.local -f compose.production.yaml up -d --no-build backend`. Check `http://127.0.0.1:9002/health`.
-5. Build the storefront against this running backend, then start storefront/gateway. A Next build performs real region/product requests and must use the matching publishable key. On Docker Desktop, `MEDUSA_BUILD_BACKEND_URL=http://host.docker.internal:9000` reaches the existing local dev backend. **On Linux, a host-gateway alias cannot reach a port bound only to 127.0.0.1.** Either route the public domain's backend paths to the bootstrap backend first, or use the temporary host-network build override below with `MEDUSA_BUILD_BACKEND_URL=http://127.0.0.1:9002`.
+The server release uses Compose project phone-store-production and a separate PostgreSQL database phone_store_production_20261109. Its named volumes are independent of the former tehnostore-production stack. The gateway joins the existing external coolify network under the unique alias phone-store-production-gateway. Only deploy/traefik.yaml's one-domain route is switched; the shared reverse proxy and other projects are not restarted.
 
-```yaml
-# Temporary file outside Git, e.g. /tmp/tehnostore-build.override.yaml
-services:
-  storefront:
-    build:
-      network: host
-      entitlements:
-        - network.host
-```
+Keep real secrets in a protected server-only env file outside the checkout. Use .env.production.template as a variable-name reference; never commit secrets, dumps, uploaded media or private files. Set PUBLIC_URL to the domain above, BACKEND_BOOTSTRAP_PORT=9012, GATEWAY_DEBUG_PORT=3118, IMAGE_TAG to the Git revision and NEXT_PUBLIC_DEFAULT_REGION=ru.
 
-```sh
-docker compose --env-file .env.production.local \
-  -f compose.production.yaml -f /tmp/tehnostore-build.override.yaml \
-  build --print storefront > /tmp/tehnostore-storefront-bake.json
-docker buildx bake --allow=network.host --allow=fs.read="$PWD" \
-  -f /tmp/tehnostore-storefront-bake.json --load storefront
-docker compose --env-file .env.production.local -f compose.production.yaml up -d --no-build
-```
+Deploy sequentially: back up the old stack; build backend; start only new PostgreSQL/Redis; restore the reviewed local phone-store dump into the new empty DB as medusa_app; restore static/private media; compare all table counts and row digests with the source; run required migrations; start backend; build storefront against that backend; start storefront/gateway; validate HTTP and API behavior; switch only this domain; stop the five exact old store containers. Preserve old volumes and the old route for rollback. Never use down -v or any global Docker prune/stop command.
 
-The build URL is used only as `MEDUSA_INTERNAL_BACKEND_URL` during compilation. Runtime server requests use `http://backend:9000`; browser requests and canonical URLs use `PUBLIC_URL`. Public Next variables are compiled into browser bundles: rebuild when the domain, publishable key or default region changes. Next production builds validate TypeScript and use two page-generation workers. Run heavy builds sequentially; the 4 GiB Node heap cap is not a limit on total container memory.
-
-Coolify's existing Traefik terminates TLS. Its dynamic router for `tehnostore.dmitriy-borisenko.ru` should use the `https` entrypoint, `letsencrypt` certificate resolver and service `http://tehnostore-gateway:80`; redirect its `http` router to HTTPS. Only the gateway joins `coolify`. Nginx forwards backend paths `/store`, `/admin`, `/auth`, `/app`, `/static`, `/uploads`, `/health`, and sends other paths to Next. Local ports `3108` (gateway) and `9002` (backend bootstrap) bind only to loopback; PostgreSQL and Redis have no published ports.
-
-`DATABASE_URL` explicitly includes `?sslmode=disable` for private Docker PostgreSQL. Installed Medusa 2.22.3 recognizes this flag and disables its otherwise automatic remote-host SSL default, so no production-only source edit is needed. Keep PostgreSQL private. App processes run as the unprivileged `node` user; persistent asset volumes inherit that ownership on first creation.
-
-Before switching traffic, verify Compose health, HTTPS certificate/domain, homepage, nested catalog navigation, product page, `/app` login, Store API responses with the publishable key, and a 401 from unauthenticated `/admin/navigation`. Back up PostgreSQL and uploaded files before upgrades. Retain the previous image tag for rollback. Never use `down -v` on this stack.
+On Linux, the storefront build needs host networking to reach the loopback bootstrap backend at http://127.0.0.1:9012. Use a temporary Compose build override with network: host and entitlement network.host, then buildx bake --allow=network.host. This address is build-only; runtime server calls use http://backend:9000. Backend and storefront both run compiled production code as the node user, with no source mounts. Persist PostgreSQL, public static media, uploads and private_files together.

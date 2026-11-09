@@ -1,0 +1,1098 @@
+diff --git a/dist/app.css b/dist/app.css
+index b32cffa..8e07b3f 100644
+--- a/dist/app.css
++++ b/dist/app.css
+@@ -5488,3 +5488,79 @@ button:not(:disabled),
+ .\[\&_tr\]\:hover\:bg-ui-bg-subtle:hover tr {
+   background-color: var(--bg-subtle);
+ }
++
++/* TEXNO Store admin shell */
++.texno-admin-sidebar {
++  --bg-subtle: #171e2d;
++  --bg-base: #293855;
++  --bg-subtle-hover: #222e43;
++  --bg-base-hover: #303f5c;
++  --button-transparent-hover: #222e43;
++  --button-transparent-pressed: #293855;
++  --border-base: #303d52;
++  --fg-base: #f3f6fc;
++  --fg-subtle: #c5cede;
++  --fg-muted: #a2afc4;
++  --borders-focus: 0 0 0 2px #aabaff;
++  background-color: var(--bg-subtle);
++  color: var(--fg-base);
++  scrollbar-color: #46536c var(--bg-subtle);
++}
++.texno-admin-sidebar-desktop {
++  width: 232px;
++}
++.texno-admin-store-header {
++  z-index: 1;
++}
++.texno-admin-nav-search {
++  margin-bottom: 12px;
++}
++.texno-admin-nav-search button {
++  min-height: 34px;
++  background-color: #202a3d;
++  box-shadow: inset 0 0 0 1px #35425a;
++}
++.texno-admin-nav-search button:hover {
++  background-color: #29364e;
++}
++.texno-admin-nav-search button:focus-visible {
++  box-shadow: var(--borders-focus);
++}
++.texno-admin-nav-section {
++  padding-top: 10px;
++}
++.texno-admin-nav-section h2 {
++  color: var(--fg-muted);
++  font-size: 10px;
++  line-height: 16px;
++  letter-spacing: 0.065em;
++  text-transform: uppercase;
++}
++.texno-admin-nav-section a {
++  min-height: 30px;
++}
++.texno-admin-nav-section a .shadow-borders-base {
++  background: transparent;
++  box-shadow: none;
++}
++.texno-admin-sidebar nav a[aria-current="page"],
++.texno-admin-sidebar nav a.shadow-elevation-card-rest {
++  background-color: #303f61;
++  color: #fff;
++  box-shadow: inset 0 0 0 1px #495c84;
++}
++.texno-admin-sidebar nav a[aria-current="page"] svg,
++.texno-admin-sidebar nav a.shadow-elevation-card-rest svg {
++  color: #c1cbff;
++}
++.texno-admin-sidebar nav a:focus-visible {
++  outline: 2px solid #aabaff;
++  outline-offset: -2px;
++}
++.texno-admin-workspace {
++  background-color: var(--bg-subtle);
++  background-color: color-mix(in srgb, var(--bg-subtle) 91%, #8397b6);
++}
++.texno-admin-topbar {
++  background-color: var(--bg-base);
++}
+diff --git a/dist/app.js b/dist/app.js
+index 2c1bd6c..37859b5 100644
+--- a/dist/app.js
++++ b/dist/app.js
+@@ -144781,7 +144781,8 @@ var init_nav_item = __esm({
+       items,
+       type = "core",
+       from,
+-      translationNs
++      translationNs,
++      exact = false
+     }) => {
+       const { t: t5 } = (0, import_react_i18next15.useTranslation)(translationNs);
+       const { pathname, search } = (0, import_react_router_dom9.useLocation)();
+@@ -144824,7 +144825,7 @@ var init_nav_item = __esm({
+           import_react_router_dom9.NavLink,
+           {
+             to: getLinkTarget(to),
+-            end: items?.some((i) => i.to === pathname),
++            end: exact || items?.some((i) => i.to === pathname),
+             state: from ? {
+               from
+             } : void 0,
+@@ -145744,7 +145745,7 @@ var init_shell = __esm({
+             /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(MobileSidebarContainer, { children }),
+             /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(DesktopSidebarContainer, { children })
+           ] }),
+-          /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("div", { className: "flex h-screen w-full flex-col overflow-auto", children: [
++          /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("div", { className: "texno-admin-workspace flex h-screen w-full flex-col overflow-auto", children: [
+             /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(Topbar, {}),
+             /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(
+               "main",
+@@ -145861,7 +145862,7 @@ var init_shell = __esm({
+       ] });
+     };
+     Topbar = () => {
+-      return /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("div", { className: "grid w-full grid-cols-2 border-b p-3", children: [
++      return /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("div", { className: "texno-admin-topbar grid w-full grid-cols-2 border-b p-3", children: [
+         /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("div", { className: "flex items-center gap-x-1.5", children: [
+           /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(ToggleSidebar, {}),
+           /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(Breadcrumbs, {})
+@@ -145890,7 +145891,7 @@ var init_shell = __esm({
+       return /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(
+         "div",
+         {
+-          className: (0, import_ui21.clx)("hidden h-screen w-[220px] border-e", {
++          className: (0, import_ui21.clx)("texno-admin-sidebar texno-admin-sidebar-desktop hidden h-screen border-e", {
+             "lg:flex": desktop
+           }),
+           children
+@@ -145914,7 +145915,7 @@ var init_shell = __esm({
+           import_radix_ui3.Dialog.Content,
+           {
+             className: (0, import_ui21.clx)(
+-              "fixed inset-y-2 start-2 flex w-full max-w-[304px] flex-col overflow-hidden rounded-lg border-r bg-ui-bg-subtle shadow-elevation-modal",
++              "texno-admin-sidebar fixed inset-y-2 start-2 flex w-full max-w-[304px] flex-col overflow-hidden rounded-lg border-r bg-ui-bg-subtle shadow-elevation-modal",
+               "data-[state=closed]:slide-out-to-start-1/2 data-[state=open]:slide-in-from-start-1/2 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+             ),
+             children: [
+@@ -146251,12 +146252,13 @@ var init_main_layout = __esm({
+     init_use_resource_permissions();
+     init_constants3();
+     import_jsx_runtime38 = require("react/jsx-runtime");
++    const { getSidebarGroups } = require("./texno-sidebar.cjs");
+     MainLayout = () => {
+       return /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(Shell, { children: /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(MainSidebar, {}) });
+     };
+     MainSidebar = () => {
+       return /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("aside", { className: "flex flex-1 flex-col justify-between overflow-y-auto", children: /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)("div", { className: "flex flex-1 flex-col", children: [
+-        /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(PermissionGuard, { resource: "store", operation: "read", children: /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)("div", { className: "sticky top-0 bg-ui-bg-subtle", children: [
++        /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(PermissionGuard, { resource: "store", operation: "read", children: /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)("div", { className: "texno-admin-store-header sticky top-0 bg-ui-bg-subtle", children: [
+           /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(Header, {}),
+           /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("div", { className: "px-3", children: /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(import_ui23.Divider, { variant: "dashed" }) })
+         ] }) }),
+@@ -146370,6 +146372,7 @@ var init_main_layout = __esm({
+       const { canRead: canReadProductCollections } = useProductCollectionPermissions();
+       const { canRead: canReadProductCategories } = useProductCategoryPermissions();
+       const { canRead: canReadProductOptions } = useResourcePermissions("product_option");
++      const useCatalogConstructor = canReadProducts && canReadProductCategories && globalThis.localStorage?.getItem("catalog-constructor:legacy-admin") !== "1";
+       return [
+         ...canReadOrders ? [
+           {
+@@ -146378,7 +146381,7 @@ var init_main_layout = __esm({
+             to: "/orders"
+           }
+         ] : [],
+-        ...canReadProducts ? [
++        ...canReadProducts && !useCatalogConstructor ? [
+           {
+             icon: /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(import_icons16.Tag, {}),
+             label: t5("products.domain"),
+@@ -146405,6 +146408,7 @@ var init_main_layout = __esm({
+             ]
+           }
+         ] : [],
++        ...useCatalogConstructor && canReadProductCollections ? [{ label: t5("collections.domain"), to: "/collections" }] : [],
+         ...canReadInventory ? [
+           {
+             icon: /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(import_icons16.Buildings, {}),
+@@ -146492,7 +146496,45 @@ var init_main_layout = __esm({
+         }
+       });
+       const extensionItems = menuItems.filter((item) => !item.nested);
+-      return /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("nav", { className: "py-3", children: /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("div", { className: "px-3", children: /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(
++      const { i18n } = (0, import_react_i18next19.useTranslation)();
++      const { pathname } = (0, import_react_router_dom14.useLocation)();
++      const language = i18n.resolvedLanguage || i18n.language;
++      const grouped = !(globalThis.localStorage?.getItem("catalog-constructor:legacy-admin") === "1");
++      const groupedRoutes = grouped ? [
++        ...coreRoutes,
++        ...extensionItems.map((item) => ({ ...item, icon: item.icon || (0, import_jsx_runtime38.jsx)(import_icons16.SquaresPlus, {}), type: "extension" })),
++        {
++          to: "/settings",
++          label: language?.toLowerCase().startsWith("ru") ? "Системные настройки" : "System settings",
++          icon: (0, import_jsx_runtime38.jsx)(import_icons16.CogSixTooth, {}),
++          from: pathname
++        }
++      ] : [];
++      const groups = getSidebarGroups(groupedRoutes, language, {
++        "/catalog-constructor/products": (0, import_jsx_runtime38.jsx)(import_icons16.Tag, {}),
++        "/catalog-constructor/categories": (0, import_jsx_runtime38.jsx)(import_icons16.Folder, {}),
++        "/catalog-constructor/variants": (0, import_jsx_runtime38.jsx)(import_icons16.Swatch, {}),
++        "/collections": (0, import_jsx_runtime38.jsx)(import_icons16.ArchiveBox, {})
++      });
++      const groupEntries = groups.map(({ id, label, items }) =>
++        (0, import_jsx_runtime38.jsx)(LayoutComposer.Entry, { id: "nav-group:" + id, children:
++          (0, import_jsx_runtime38.jsxs)("section", { "aria-label": label, className: "texno-admin-nav-section", children: [
++            (0, import_jsx_runtime38.jsx)(import_ui23.Text, { as: "h2", size: "xsmall", weight: "plus", className: "px-2 pb-1 text-ui-fg-subtle", children: label }),
++            (0, import_jsx_runtime38.jsx)("div", { className: "flex flex-col gap-y-0.5", children: items.map((item) => (0, import_jsx_runtime38.jsx)(NavItem, { ...item }, item.to)) })
++          ] })
++        }, id)
++      );
++      const trash = extensionItems.find((item) => item.to === "/catalog-trash");
++      if (grouped && trash) {
++        groupEntries.push((0, import_jsx_runtime38.jsx)(LayoutComposer.Entry, { id: "nav:/catalog-trash", children:
++          (0, import_jsx_runtime38.jsx)("div", { className: "mt-3 border-t border-ui-border-base pt-3", children:
++            (0, import_jsx_runtime38.jsx)(NavItem, { ...trash, exact: true, type: "extension" })
++          })
++        }, "catalog-trash"));
++      }
++      return /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("nav", { className: "py-3", children: (0, import_jsx_runtime38.jsxs)("div", { className: "px-3", children: [
++        grouped && (0, import_jsx_runtime38.jsx)("div", { className: "texno-admin-nav-search", children: (0, import_jsx_runtime38.jsx)(Searchbar, {}) }),
++        /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(
+         LayoutComposer,
+         {
+           widgetsZonePrefix: "sidebar",
+@@ -146505,7 +146547,7 @@ var init_main_layout = __esm({
+             className: "gap-y-1"
+           },
+           sections: {
+-            main: /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)(import_jsx_runtime38.Fragment, { children: [
++            main: grouped ? groupEntries : /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)(import_jsx_runtime38.Fragment, { children: [
+               /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(LayoutComposer.Entry, { id: "Searchbar", children: /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(Searchbar, {}) }),
+               coreRoutes.map((route) => /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(LayoutComposer.Entry, { id: `nav:${route.to}`, children: /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(NavItem, { ...route }, route.to) }, route.to)),
+               extensionItems.map((item) => /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(LayoutComposer.Entry, { id: `nav:${item.to}`, children: /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(
+@@ -146523,11 +146565,12 @@ var init_main_layout = __esm({
+             ] })
+           }
+         }
+-      ) }) });
++      )] }) });
+     };
+     UtilitySection = () => {
+       const location = (0, import_react_router_dom14.useLocation)();
+       const { t: t5 } = (0, import_react_i18next19.useTranslation)();
++      if (globalThis.localStorage?.getItem("catalog-constructor:legacy-admin") !== "1") return null;
+       return /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("div", { className: "flex flex-col gap-y-0.5 px-3 py-3", children: /* @__PURE__ */ (0, import_jsx_runtime38.jsx)(
+         NavItem,
+         {
+@@ -148503,6 +148546,7 @@ var init_data_table_order_by = __esm({
+     }) => {
+       const [searchParams, setSearchParams] = (0, import_react_router_dom22.useSearchParams)();
+       const [state, setState] = (0, import_react59.useState)(initState(searchParams, prefix));
++      (0, import_react59.useEffect)(() => setState(initState(searchParams, prefix)), [searchParams, prefix]);
+       const param = prefix ? `${prefix}_order` : "order";
+       const { t: t5 } = (0, import_react_i18next30.useTranslation)();
+       const direction = useDocumentDirection();
+@@ -148537,6 +148581,7 @@ var init_data_table_order_by = __esm({
+         const orderParam = state2.dir === "asc" /* ASC */ ? state2.key : `-${state2.key}`;
+         setSearchParams((prev) => {
+           prev.set(param, orderParam);
++          prev.delete(prefix ? prefix + "_offset" : "offset");
+           return prev;
+         });
+       };
+@@ -148734,11 +148779,23 @@ var init_data_table_root = __esm({
+       navigateTo,
+       commands,
+       count = 0,
++      orderBy = [],
++      prefix,
+       noResults = false,
+       noHeader = false,
+       layout = "fit"
+     }) => {
+       const { t: t5 } = (0, import_react_i18next32.useTranslation)();
++      const [searchParams, setSearchParams] = (0, import_react_router_dom23.useSearchParams)();
++      const orderParam = prefix ? prefix + "_order" : "order";
++      const offsetParam = prefix ? prefix + "_offset" : "offset";
++      const order = searchParams.get(orderParam);
++      const sort = (field) => setSearchParams((previous) => {
++        const next = new URLSearchParams(previous);
++        next.set(orderParam, order === field ? "-" + field : order === "-" + field ? field : field === "created_at" || field === "updated_at" ? "-" + field : field);
++        next.delete(offsetParam);
++        return next;
++      });
+       const [showStickyBorder, setShowStickyBorder] = (0, import_react61.useState)(false);
+       const scrollableRef = (0, import_react61.useRef)(null);
+       const hasSelect = columns.find((c) => c.id === "select");
+@@ -148790,6 +148847,10 @@ var init_data_table_root = __esm({
+                           "[&_th:first-of-type]:w-[1%] [&_th:first-of-type]:whitespace-nowrap": hasSelect
+                         }),
+                         children: headerGroup.headers.map((header, index) => {
++                          const column = header.column.columnDef;
++                          const field = orderBy.find(({ key }) => key === column.meta?.sortKey || key === column.accessorKey || key === header.id)?.key;
++                          const sortDirection = field && (order === field ? "ascending" : order === "-" + field ? "descending" : undefined);
++                          const headerContent = (0, import_react_table.flexRender)(header.column.columnDef.header, header.getContext());
+                           const isActionHeader = header.id === "actions";
+                           const isSelectHeader = header.id === "select";
+                           const isSpecialHeader = isActionHeader || isSelectHeader;
+@@ -148802,6 +148863,7 @@ var init_data_table_root = __esm({
+                             import_ui36.Table.HeaderCell,
+                             {
+                               "data-table-header-id": header.id,
++                              "aria-sort": sortDirection,
+                               style: {
+                                 width: !isSpecialHeader ? `${colWidth}%` : void 0
+                               },
+@@ -148810,10 +148872,11 @@ var init_data_table_root = __esm({
+                                 "start-[68px]": isStickyHeader && hasSelect && !isSelectHeader,
+                                 "after:bg-ui-border-base": showStickyBorder && isStickyHeader && !isSpecialHeader
+                               }),
+-                              children: (0, import_react_table.flexRender)(
+-                                header.column.columnDef.header,
+-                                header.getContext()
+-                              )
++                              children: field ? (0, import_jsx_runtime55.jsxs)(import_ui36.Button, {
++                                size: "small", variant: "transparent", type: "button", className: "-ml-2 whitespace-nowrap",
++                                onClick: () => sort(field),
++                                children: [headerContent, (0, import_jsx_runtime55.jsx)("span", { "aria-hidden": true, children: sortDirection === "ascending" ? "↑" : sortDirection === "descending" ? "↓" : "↕" })]
++                              }) : headerContent
+                             },
+                             header.id
+                           );
+@@ -148909,6 +148972,7 @@ var init_data_table_root = __esm({
+                 canNextPage: table.getCanNextPage(),
+                 canPreviousPage: table.getCanPreviousPage(),
+                 nextPage: table.nextPage,
++                setPageIndex: table.setPageIndex,
+                 previousPage: table.previousPage,
+                 count,
+                 pageIndex,
+@@ -149049,6 +149113,8 @@ var init_data_table = __esm({
+                 count,
+                 columns,
+                 pagination: true,
++                orderBy,
++                prefix,
+                 navigateTo,
+                 commands,
+                 noResults,
+@@ -149483,6 +149549,7 @@ var init_use_product_table_columns = __esm({
+         () => [
+           columnHelper.display({
+             id: "product",
++            meta: { sortKey: "title" },
+             header: () => /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(ProductHeader, {}),
+             cell: ({ row }) => /* @__PURE__ */ (0, import_jsx_runtime66.jsx)(ProductCell, { product: row.original })
+           }),
+@@ -155832,6 +155899,7 @@ var init_product_list = __esm({
+         LayoutComposer,
+         {
+           widgetsZonePrefix: "product.list",
++          hasOutlet: false,
+           preferredLayoutId: import_admin_shared4.CORE_LAYOUT_IDS.SINGLE_COLUMN,
+           sections: {
+             main: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(LayoutComposer.Entry, { id: "ProductListTable", children: isViewConfigEnabled ? /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(ConfigurableProductListTable, {}) : /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(ProductListTable, {}) })
+@@ -165976,15 +166044,15 @@ var init_product_import = __esm({
+     ProductImportContent = () => {
+       const { t: t5 } = (0, import_react_i18next76.useTranslation)();
+       const [filename, setFilename] = (0, import_react139.useState)();
+-      const { mutateAsync: importProducts, isPending, data } = useImportProducts();
+-      const { mutateAsync: confirm } = useConfirmImportProducts();
++      const { mutate: importProducts, isPending, data } = useImportProducts();
++      const { mutate: confirm } = useConfirmImportProducts();
+       const { handleSuccess } = useRouteModal();
+       const productImportTemplateContent = (0, import_react139.useMemo)(() => {
+         return getProductImportCsvTemplate();
+       }, []);
+       const handleUploaded = async (file) => {
+         setFilename(file.name);
+-        await importProducts(
++        importProducts(
+           { file },
+           {
+             onError: (err) => {
+@@ -165998,7 +166066,7 @@ var init_product_import = __esm({
+         if (!data?.transaction_id) {
+           return;
+         }
+-        await confirm(data.transaction_id, {
++        confirm(data.transaction_id, {
+           onSuccess: () => {
+             import_ui94.toast.info(t5("products.import.success.title"), {
+               description: t5("products.import.success.description")
+@@ -193258,11 +193326,13 @@ var init_claim_create = __esm({
+       const { return: orderReturn } = useReturn(claim?.return_id, void 0, {
+         enabled: !!claim?.return_id
+       });
++      const initializedOrders = (0, import_react228.useRef)(new Set());
+       (0, import_react228.useEffect)(() => {
+         async function run() {
+-          if (IS_REQUEST_RUNNING3 || !preview) {
++          if (!preview || initializedOrders.current.has(preview.id)) {
+             return;
+           }
++          initializedOrders.current.add(preview.id);
+           if (preview.order_change) {
+             if (preview.order_change.change_type === "claim") {
+               setActiveClaimId(preview.order_change.claim_id);
+@@ -195447,11 +195517,13 @@ var init_exchange_create = __esm({
+       const { return: orderReturn } = useReturn(exchange?.return_id, void 0, {
+         enabled: !!exchange?.return_id
+       });
++      const initializedOrders = (0, import_react236.useRef)(new Set());
+       (0, import_react236.useEffect)(() => {
+         async function run() {
+-          if (IS_REQUEST_RUNNING4 || !preview) {
++          if (!preview || initializedOrders.current.has(preview.id)) {
+             return;
+           }
++          initializedOrders.current.add(preview.id);
+           if (preview.order_change) {
+             if (preview.order_change.change_type === "exchange") {
+               setActiveExchangeId(preview.order_change.exchange_id);
+@@ -196249,11 +196321,13 @@ var init_order_edit_create = __esm({
+       });
+       const { order: preview } = useOrderPreview(id2);
+       const { mutateAsync: createOrderEdit } = useCreateOrderEdit(order?.id ?? "");
++      const initializedOrders = (0, import_react241.useRef)(new Set());
+       (0, import_react241.useEffect)(() => {
+         async function run() {
+-          if (IS_REQUEST_RUNNING5 || !preview) {
++          if (!preview || initializedOrders.current.has(preview.id)) {
+             return;
+           }
++          initializedOrders.current.add(preview.id);
+           if (preview.order_change) {
+             if (preview.order_change.change_type !== "edit") {
+               navigate(`/orders/${preview.id}`, { replace: true });
+@@ -217433,7 +217507,8 @@ var init_inventory_list_table = __esm({
+               { key: "title", label: t5("fields.title") },
+               { key: "sku", label: t5("fields.sku") },
+               { key: "stocked_quantity", label: t5("fields.inStock") },
+-              { key: "reserved_quantity", label: t5("inventory.reserved") }
++              { key: "reserved_quantity", label: t5("inventory.reserved") },
++              { key: "created_at", label: t5("fields.createdAt") }
+             ],
+             navigateTo: (row) => `${row.id}`,
+             commands: canUpdateInventoryLevels ? [
+@@ -244147,6 +244222,7 @@ var init_tax_region_table = __esm({
+             canPreviousPage: table.getCanPreviousPage(),
+             count,
+             nextPage: table.nextPage,
++            setPageIndex: table.setPageIndex,
+             previousPage: table.previousPage,
+             pageCount: table.getPageCount(),
+             pageIndex,
+@@ -246306,6 +246382,7 @@ var init_tax_override_table = __esm({
+             canPreviousPage: table.getCanPreviousPage(),
+             count,
+             nextPage: table.nextPage,
++            setPageIndex: table.setPageIndex,
+             previousPage: table.previousPage,
+             pageCount: table.getPageCount(),
+             pageIndex,
+diff --git a/dist/chunk-365GERX4.mjs b/dist/chunk-365GERX4.mjs
+index d34e0e3..ee571c8 100644
+--- a/dist/chunk-365GERX4.mjs
++++ b/dist/chunk-365GERX4.mjs
+@@ -33,6 +33,7 @@ var useProductTableColumns = () => {
+     () => [
+       columnHelper.display({
+         id: "product",
++        meta: { sortKey: "title" },
+         header: () => /* @__PURE__ */ jsx(ProductHeader, {}),
+         cell: ({ row }) => /* @__PURE__ */ jsx(ProductCell, { product: row.original })
+       }),
+diff --git a/dist/chunk-6DQ5276V.mjs b/dist/chunk-6DQ5276V.mjs
+index 612c7c7..1ad9253 100644
+--- a/dist/chunk-6DQ5276V.mjs
++++ b/dist/chunk-6DQ5276V.mjs
+@@ -449,6 +449,7 @@ var TaxOverrideTable = ({
+         canPreviousPage: table.getCanPreviousPage(),
+         count,
+         nextPage: table.nextPage,
++        setPageIndex: table.setPageIndex,
+         previousPage: table.previousPage,
+         pageCount: table.getPageCount(),
+         pageIndex,
+diff --git a/dist/chunk-6NO4U2MM.mjs b/dist/chunk-6NO4U2MM.mjs
+index 27e45d6..6147883 100644
+--- a/dist/chunk-6NO4U2MM.mjs
++++ b/dist/chunk-6NO4U2MM.mjs
+@@ -91,7 +91,7 @@ var DataTableQuery = ({
+ };
+ 
+ // src/components/table/data-table/data-table-root/data-table-root.tsx
+-import { CommandBar, Table, clx } from "@medusajs/ui";
++import { Button as LegacySortButton, CommandBar, Table, clx } from "@medusajs/ui";
+ import {
+   flexRender
+ } from "@tanstack/react-table";
+@@ -102,7 +102,7 @@ import {
+   useState
+ } from "react";
+ import { useTranslation as useTranslation2 } from "react-i18next";
+-import { Link } from "react-router-dom";
++import { Link, useSearchParams as useLegacyTableSearchParams } from "react-router-dom";
+ import { jsx as jsx3, jsxs as jsxs2 } from "react/jsx-runtime";
+ var DataTableRoot = ({
+   table,
+@@ -111,11 +111,23 @@ var DataTableRoot = ({
+   navigateTo,
+   commands,
+   count = 0,
++  orderBy = [],
++  prefix,
+   noResults = false,
+   noHeader = false,
+   layout = "fit"
+ }) => {
+   const { t } = useTranslation2();
++  const [searchParams, setSearchParams] = useLegacyTableSearchParams();
++  const orderParam = prefix ? prefix + "_order" : "order";
++  const offsetParam = prefix ? prefix + "_offset" : "offset";
++  const order = searchParams.get(orderParam);
++  const sort = (field) => setSearchParams((previous) => {
++    const next = new URLSearchParams(previous);
++    next.set(orderParam, order === field ? "-" + field : order === "-" + field ? field : field === "created_at" || field === "updated_at" ? "-" + field : field);
++    next.delete(offsetParam);
++    return next;
++  });
+   const [showStickyBorder, setShowStickyBorder] = useState(false);
+   const scrollableRef = useRef(null);
+   const hasSelect = columns.find((c) => c.id === "select");
+@@ -167,6 +179,10 @@ var DataTableRoot = ({
+                       "[&_th:first-of-type]:w-[1%] [&_th:first-of-type]:whitespace-nowrap": hasSelect
+                     }),
+                     children: headerGroup.headers.map((header, index) => {
++                      const column = header.column.columnDef;
++                      const field = orderBy.find(({ key }) => key === column.meta?.sortKey || key === column.accessorKey || key === header.id)?.key;
++                      const sortDirection = field && (order === field ? "ascending" : order === "-" + field ? "descending" : undefined);
++                      const headerContent = flexRender(header.column.columnDef.header, header.getContext());
+                       const isActionHeader = header.id === "actions";
+                       const isSelectHeader = header.id === "select";
+                       const isSpecialHeader = isActionHeader || isSelectHeader;
+@@ -179,6 +195,7 @@ var DataTableRoot = ({
+                         Table.HeaderCell,
+                         {
+                           "data-table-header-id": header.id,
++                          "aria-sort": sortDirection,
+                           style: {
+                             width: !isSpecialHeader ? `${colWidth}%` : void 0
+                           },
+@@ -187,10 +204,11 @@ var DataTableRoot = ({
+                             "start-[68px]": isStickyHeader && hasSelect && !isSelectHeader,
+                             "after:bg-ui-border-base": showStickyBorder && isStickyHeader && !isSpecialHeader
+                           }),
+-                          children: flexRender(
+-                            header.column.columnDef.header,
+-                            header.getContext()
+-                          )
++                          children: field ? jsxs2(LegacySortButton, {
++                            size: "small", variant: "transparent", type: "button", className: "-ml-2 whitespace-nowrap",
++                            onClick: () => sort(field),
++                            children: [headerContent, jsx3("span", { "aria-hidden": true, children: sortDirection === "ascending" ? "↑" : sortDirection === "descending" ? "↓" : "↕" })]
++                          }) : headerContent
+                         },
+                         header.id
+                       );
+@@ -286,6 +304,7 @@ var DataTableRoot = ({
+             canNextPage: table.getCanNextPage(),
+             canPreviousPage: table.getCanPreviousPage(),
+             nextPage: table.nextPage,
++            setPageIndex: table.setPageIndex,
+             previousPage: table.previousPage,
+             count,
+             pageIndex,
+@@ -406,6 +425,8 @@ var _DataTable = ({
+             count,
+             columns,
+             pagination: true,
++            orderBy,
++            prefix,
+             navigateTo,
+             commands,
+             noResults,
+diff --git a/dist/chunk-GBUMG3AT.mjs b/dist/chunk-GBUMG3AT.mjs
+index e6826b4..f5e149d 100644
+--- a/dist/chunk-GBUMG3AT.mjs
++++ b/dist/chunk-GBUMG3AT.mjs
+@@ -137200,7 +137200,8 @@ var NavItem = ({
+   items,
+   type = "core",
+   from,
+-  translationNs
++  translationNs,
++  exact = false
+ }) => {
+   const { t: t2 } = useTranslation6(translationNs);
+   const { pathname, search } = useLocation4();
+@@ -137243,7 +137244,7 @@ var NavItem = ({
+       NavLink,
+       {
+         to: getLinkTarget(to),
+-        end: items?.some((i) => i.to === pathname),
++        end: exact || items?.some((i) => i.to === pathname),
+         state: from ? {
+           from
+         } : void 0,
+@@ -137684,7 +137685,7 @@ var Shell = ({ children }) => {
+         /* @__PURE__ */ jsx14(MobileSidebarContainer, { children }),
+         /* @__PURE__ */ jsx14(DesktopSidebarContainer, { children })
+       ] }),
+-      /* @__PURE__ */ jsxs7("div", { className: "flex h-screen w-full flex-col overflow-auto", children: [
++      /* @__PURE__ */ jsxs7("div", { className: "texno-admin-workspace flex h-screen w-full flex-col overflow-auto", children: [
+         /* @__PURE__ */ jsx14(Topbar, {}),
+         /* @__PURE__ */ jsx14(
+           "main",
+@@ -137801,7 +137802,7 @@ var ToggleSidebar = () => {
+   ] });
+ };
+ var Topbar = () => {
+-  return /* @__PURE__ */ jsxs7("div", { className: "grid w-full grid-cols-2 border-b p-3", children: [
++  return /* @__PURE__ */ jsxs7("div", { className: "texno-admin-topbar grid w-full grid-cols-2 border-b p-3", children: [
+     /* @__PURE__ */ jsxs7("div", { className: "flex items-center gap-x-1.5", children: [
+       /* @__PURE__ */ jsx14(ToggleSidebar, {}),
+       /* @__PURE__ */ jsx14(Breadcrumbs, {})
+@@ -137830,7 +137831,7 @@ var DesktopSidebarContainer = ({ children }) => {
+   return /* @__PURE__ */ jsx14(
+     "div",
+     {
+-      className: clx4("hidden h-screen w-[220px] border-e", {
++      className: clx4("texno-admin-sidebar texno-admin-sidebar-desktop hidden h-screen border-e", {
+         "lg:flex": desktop
+       }),
+       children
+@@ -137854,7 +137855,7 @@ var MobileSidebarContainer = ({ children }) => {
+       RadixDialog2.Content,
+       {
+         className: clx4(
+-          "fixed inset-y-2 start-2 flex w-full max-w-[304px] flex-col overflow-hidden rounded-lg border-r bg-ui-bg-subtle shadow-elevation-modal",
++          "texno-admin-sidebar fixed inset-y-2 start-2 flex w-full max-w-[304px] flex-col overflow-hidden rounded-lg border-r bg-ui-bg-subtle shadow-elevation-modal",
+           "data-[state=closed]:slide-out-to-start-1/2 data-[state=open]:slide-in-from-start-1/2 duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+         ),
+         children: [
+@@ -138159,12 +138160,14 @@ var UserItem = () => {
+ 
+ // src/components/layout/main-layout/main-layout.tsx
+ import { Fragment as Fragment4, jsx as jsx16, jsxs as jsxs9 } from "react/jsx-runtime";
++import texnoSidebar from "./texno-sidebar.cjs";
++import { ArchiveBox as TexnoArchiveBox, Folder as TexnoFolder, Swatch as TexnoSwatch } from "@medusajs/icons";
+ var MainLayout = () => {
+   return /* @__PURE__ */ jsx16(Shell, { children: /* @__PURE__ */ jsx16(MainSidebar, {}) });
+ };
+ var MainSidebar = () => {
+   return /* @__PURE__ */ jsx16("aside", { className: "flex flex-1 flex-col justify-between overflow-y-auto", children: /* @__PURE__ */ jsxs9("div", { className: "flex flex-1 flex-col", children: [
+-    /* @__PURE__ */ jsx16(PermissionGuard, { resource: "store", operation: "read", children: /* @__PURE__ */ jsxs9("div", { className: "sticky top-0 bg-ui-bg-subtle", children: [
++    /* @__PURE__ */ jsx16(PermissionGuard, { resource: "store", operation: "read", children: /* @__PURE__ */ jsxs9("div", { className: "texno-admin-store-header sticky top-0 bg-ui-bg-subtle", children: [
+       /* @__PURE__ */ jsx16(Header, {}),
+       /* @__PURE__ */ jsx16("div", { className: "px-3", children: /* @__PURE__ */ jsx16(Divider, { variant: "dashed" }) })
+     ] }) }),
+@@ -138278,6 +138281,7 @@ var useCoreRoutes = () => {
+   const { canRead: canReadProductCollections } = useProductCollectionPermissions();
+   const { canRead: canReadProductCategories } = useProductCategoryPermissions();
+   const { canRead: canReadProductOptions } = useResourcePermissions("product_option");
++  const useCatalogConstructor = canReadProducts && canReadProductCategories && globalThis.localStorage?.getItem("catalog-constructor:legacy-admin") !== "1";
+   return [
+     ...canReadOrders ? [
+       {
+@@ -138286,7 +138290,7 @@ var useCoreRoutes = () => {
+         to: "/orders"
+       }
+     ] : [],
+-    ...canReadProducts ? [
++    ...canReadProducts && !useCatalogConstructor ? [
+       {
+         icon: /* @__PURE__ */ jsx16(Tag, {}),
+         label: t2("products.domain"),
+@@ -138313,6 +138317,7 @@ var useCoreRoutes = () => {
+         ]
+       }
+     ] : [],
++    ...useCatalogConstructor && canReadProductCollections ? [{ label: t2("collections.domain"), to: "/collections" }] : [],
+     ...canReadInventory ? [
+       {
+         icon: /* @__PURE__ */ jsx16(Buildings, {}),
+@@ -138400,7 +138405,45 @@ var SidebarRoutes = () => {
+     }
+   });
+   const extensionItems = menuItems.filter((item) => !item.nested);
+-  return /* @__PURE__ */ jsx16("nav", { className: "py-3", children: /* @__PURE__ */ jsx16("div", { className: "px-3", children: /* @__PURE__ */ jsx16(
++  const { i18n } = useTranslation10();
++  const { pathname } = useLocation6();
++  const language = i18n.resolvedLanguage || i18n.language;
++  const grouped = !(globalThis.localStorage?.getItem("catalog-constructor:legacy-admin") === "1");
++  const groupedRoutes = grouped ? [
++    ...coreRoutes,
++    ...extensionItems.map((item) => ({ ...item, icon: item.icon || jsx16(SquaresPlus, {}), type: "extension" })),
++    {
++      to: "/settings",
++      label: language?.toLowerCase().startsWith("ru") ? "Системные настройки" : "System settings",
++      icon: jsx16(CogSixTooth, {}),
++      from: pathname
++    }
++  ] : [];
++  const groups = texnoSidebar.getSidebarGroups(groupedRoutes, language, {
++    "/catalog-constructor/products": jsx16(Tag, {}),
++    "/catalog-constructor/categories": jsx16(TexnoFolder, {}),
++    "/catalog-constructor/variants": jsx16(TexnoSwatch, {}),
++    "/collections": jsx16(TexnoArchiveBox, {})
++  });
++  const groupEntries = groups.map(({ id, label, items }) =>
++    jsx16(LayoutComposer.Entry, { id: "nav-group:" + id, children:
++      jsxs9("section", { "aria-label": label, className: "texno-admin-nav-section", children: [
++        jsx16(Text6, { as: "h2", size: "xsmall", weight: "plus", className: "px-2 pb-1 text-ui-fg-subtle", children: label }),
++        jsx16("div", { className: "flex flex-col gap-y-0.5", children: items.map((item) => jsx16(NavItem, { ...item }, item.to)) })
++      ] })
++    }, id)
++  );
++  const trash = extensionItems.find((item) => item.to === "/catalog-trash");
++  if (grouped && trash) {
++    groupEntries.push(jsx16(LayoutComposer.Entry, { id: "nav:/catalog-trash", children:
++      jsx16("div", { className: "mt-3 border-t border-ui-border-base pt-3", children:
++        jsx16(NavItem, { ...trash, exact: true, type: "extension" })
++      })
++    }, "catalog-trash"));
++  }
++  return /* @__PURE__ */ jsx16("nav", { className: "py-3", children: jsxs9("div", { className: "px-3", children: [
++    grouped && jsx16("div", { className: "texno-admin-nav-search", children: jsx16(Searchbar, {}) }),
++    /* @__PURE__ */ jsx16(
+     LayoutComposer,
+     {
+       widgetsZonePrefix: "sidebar",
+@@ -138413,7 +138456,7 @@ var SidebarRoutes = () => {
+         className: "gap-y-1"
+       },
+       sections: {
+-        main: /* @__PURE__ */ jsxs9(Fragment4, { children: [
++        main: grouped ? groupEntries : /* @__PURE__ */ jsxs9(Fragment4, { children: [
+           /* @__PURE__ */ jsx16(LayoutComposer.Entry, { id: "Searchbar", children: /* @__PURE__ */ jsx16(Searchbar, {}) }),
+           coreRoutes.map((route) => /* @__PURE__ */ jsx16(LayoutComposer.Entry, { id: `nav:${route.to}`, children: /* @__PURE__ */ jsx16(NavItem, { ...route }, route.to) }, route.to)),
+           extensionItems.map((item) => /* @__PURE__ */ jsx16(LayoutComposer.Entry, { id: `nav:${item.to}`, children: /* @__PURE__ */ jsx16(
+@@ -138431,11 +138474,12 @@ var SidebarRoutes = () => {
+         ] })
+       }
+     }
+-  ) }) });
++  )] }) });
+ };
+ var UtilitySection = () => {
+   const location = useLocation6();
+   const { t: t2 } = useTranslation10();
++  if (globalThis.localStorage?.getItem("catalog-constructor:legacy-admin") !== "1") return null;
+   return /* @__PURE__ */ jsx16("div", { className: "flex flex-col gap-y-0.5 px-3 py-3", children: /* @__PURE__ */ jsx16(
+     NavItem,
+     {
+diff --git a/dist/chunk-HQKGZADC.mjs b/dist/chunk-HQKGZADC.mjs
+index dc03eee..6cb9b6d 100644
+--- a/dist/chunk-HQKGZADC.mjs
++++ b/dist/chunk-HQKGZADC.mjs
+@@ -5,7 +5,7 @@ import {
+ // src/components/table/data-table/data-table-order-by/data-table-order-by.tsx
+ import { DescendingSorting } from "@medusajs/icons";
+ import { DropdownMenu, IconButton } from "@medusajs/ui";
+-import { useState } from "react";
++import { useEffect, useState } from "react";
+ import { useTranslation } from "react-i18next";
+ import { useSearchParams } from "react-router-dom";
+ import { jsx, jsxs } from "react/jsx-runtime";
+@@ -30,6 +30,7 @@ var DataTableOrderBy = ({
+ }) => {
+   const [searchParams, setSearchParams] = useSearchParams();
+   const [state, setState] = useState(initState(searchParams, prefix));
++  useEffect(() => setState(initState(searchParams, prefix)), [searchParams, prefix]);
+   const param = prefix ? `${prefix}_order` : "order";
+   const { t } = useTranslation();
+   const direction = useDocumentDirection();
+@@ -64,6 +65,7 @@ var DataTableOrderBy = ({
+     const orderParam = state2.dir === "asc" /* ASC */ ? state2.key : `-${state2.key}`;
+     setSearchParams((prev) => {
+       prev.set(param, orderParam);
++      prev.delete(prefix ? prefix + "_offset" : "offset");
+       return prev;
+     });
+   };
+diff --git a/dist/chunk-QEDMZQZQ.mjs b/dist/chunk-QEDMZQZQ.mjs
+index 776518c..52d28a2 100644
+--- a/dist/chunk-QEDMZQZQ.mjs
++++ b/dist/chunk-QEDMZQZQ.mjs
+@@ -89,6 +89,7 @@ var TaxRegionTable = ({
+         canPreviousPage: table.getCanPreviousPage(),
+         count,
+         nextPage: table.nextPage,
++        setPageIndex: table.setPageIndex,
+         previousPage: table.previousPage,
+         pageCount: table.getPageCount(),
+         pageIndex,
+diff --git a/dist/inventory-list-MDZY6UUA.mjs b/dist/inventory-list-MDZY6UUA.mjs
+index 20368de..7277435 100644
+--- a/dist/inventory-list-MDZY6UUA.mjs
++++ b/dist/inventory-list-MDZY6UUA.mjs
+@@ -450,7 +450,8 @@ var InventoryListTable = () => {
+           { key: "title", label: t("fields.title") },
+           { key: "sku", label: t("fields.sku") },
+           { key: "stocked_quantity", label: t("fields.inStock") },
+-          { key: "reserved_quantity", label: t("inventory.reserved") }
++          { key: "reserved_quantity", label: t("inventory.reserved") },
++          { key: "created_at", label: t("fields.createdAt") }
+         ],
+         navigateTo: (row) => `${row.id}`,
+         commands: canUpdateInventoryLevels ? [
+diff --git a/dist/product-list-OL64CKID.mjs b/dist/product-list-OL64CKID.mjs
+index abe8f95..45bd5b2 100644
+--- a/dist/product-list-OL64CKID.mjs
++++ b/dist/product-list-OL64CKID.mjs
+@@ -260,6 +260,7 @@ var ProductList = () => {
+     LayoutComposer,
+     {
+       widgetsZonePrefix: "product.list",
++      hasOutlet: false,
+       preferredLayoutId: CORE_LAYOUT_IDS.SINGLE_COLUMN,
+       sections: {
+         main: /* @__PURE__ */ jsx3(LayoutComposer.Entry, { id: "ProductListTable", children: isViewConfigEnabled ? /* @__PURE__ */ jsx3(ConfigurableProductListTable, {}) : /* @__PURE__ */ jsx3(ProductListTable, {}) })
+diff --git a/dist/texno-sidebar.cjs b/dist/texno-sidebar.cjs
+new file mode 100644
+index 0000000..aea47b3
+--- /dev/null
++++ b/dist/texno-sidebar.cjs
+@@ -0,0 +1,40 @@
++const sectionDefinitions = [
++  ["sales", "Продажи", "Sales", ["/orders", "/customers", "/content-leads", "/customer-orders"]],
++  ["catalog", "Каталог", "Catalog", ["/catalog-constructor", "/catalog-constructor/products", "/catalog-constructor/categories", "/catalog-constructor/variants", "/products", "/collections", "/inventory", "/insales-import"]],
++  ["pricing", "Цены и акции", "Pricing and promotions", ["/price-lists", "/promotions"]],
++  ["storefront", "Витрина", "Storefront", ["/content-pages", "/navigation", "/content-footer", "/content-reviews", "/storefront/cart"]],
++  ["settings", "Настройки", "Settings", ["/content-settings", "/settings"]]
++];
++
++function getSidebarGroups(routes, language, icons) {
++  const russian = language?.toLowerCase().startsWith("ru");
++  const remaining = new Map(routes.map((route) => [route.to, route]));
++  remaining.delete("/catalog-trash");
++  const catalog = remaining.get("/catalog-constructor");
++  if (catalog) {
++    remaining.set(catalog.to, { ...catalog, label: russian ? "Конструктор" : "Catalog builder", items: undefined, exact: true });
++    for (const item of catalog.items ?? []) {
++      if (item.to !== "/catalog-constructor/trash") remaining.set(item.to, item);
++    }
++    // The constructor links to import and recovery from its toolbar.
++    remaining.delete("/insales-import");
++  }
++  const customers = remaining.get("/customers");
++  if (customers && russian) remaining.set(customers.to, { ...customers, label: "Покупатели" });
++  // The Orders and Customers lists each link to their own view of the directory.
++  if (remaining.has("/orders") || customers) remaining.delete("/customer-orders");
++
++  const sections = sectionDefinitions.map(([id, label, englishLabel, paths]) => {
++    const items = [];
++    for (const path of paths) {
++      const route = remaining.get(path);
++      if (route) items.push(icons[path] && !route.icon ? { ...route, icon: icons[path] } : route);
++      remaining.delete(path);
++    }
++    return { id, label: russian ? label : englishLabel, items };
++  });
++  sections.push({ id: "extensions", label: russian ? "Дополнения" : "Extensions", items: [...remaining.values()] });
++  return sections.filter(({ items }) => items.length > 0);
++}
++
++module.exports = { getSidebarGroups };
+diff --git a/src/routes/orders/order-create-claim/claim-create.tsx b/src/routes/orders/order-create-claim/claim-create.tsx
+index 0744578..24724c1 100644
+--- a/src/routes/orders/order-create-claim/claim-create.tsx
++++ b/src/routes/orders/order-create-claim/claim-create.tsx
+@@ -1,5 +1,5 @@
+ import { toast } from "@medusajs/ui"
+-import { useEffect, useState } from "react"
++import { useEffect, useRef, useState } from "react"
+ import { useTranslation } from "react-i18next"
+ import { useNavigate, useParams } from "react-router-dom"
+ 
+@@ -32,12 +32,15 @@ export const ClaimCreate = () => {
+     enabled: !!claim?.return_id,
+   })
+ 
++  const initializedOrders = useRef(new Set<string>());
+   useEffect(() => {
+     async function run() {
+-      if (IS_REQUEST_RUNNING || !preview) {
++      if (!preview || initializedOrders.current.has(preview.id)) {
+         return
+       }
+ 
++      initializedOrders.current.add(preview.id);
++
+       if (preview.order_change) {
+         if (preview.order_change.change_type === "claim") {
+           setActiveClaimId(preview.order_change.claim_id)
+diff --git a/src/routes/orders/order-create-edit/order-edit-create.tsx b/src/routes/orders/order-create-edit/order-edit-create.tsx
+index 2049e00..0a5bbfd 100644
+--- a/src/routes/orders/order-create-edit/order-edit-create.tsx
++++ b/src/routes/orders/order-create-edit/order-edit-create.tsx
+@@ -1,5 +1,5 @@
+ import { toast } from "@medusajs/ui"
+-import { useEffect } from "react"
++import { useEffect, useRef } from "react"
+ import { useTranslation } from "react-i18next"
+ import { useNavigate, useParams } from "react-router-dom"
+ 
+@@ -23,12 +23,15 @@ export const OrderEditCreate = () => {
+   const { order: preview } = useOrderPreview(id!)
+   const { mutateAsync: createOrderEdit } = useCreateOrderEdit(order?.id ?? "")
+ 
++  const initializedOrders = useRef(new Set<string>());
+   useEffect(() => {
+     async function run() {
+-      if (IS_REQUEST_RUNNING || !preview) {
++      if (!preview || initializedOrders.current.has(preview.id)) {
+         return
+       }
+ 
++      initializedOrders.current.add(preview.id);
++
+       if (preview.order_change) {
+         if (preview.order_change.change_type !== "edit") {
+           navigate(`/orders/${preview.id}`, { replace: true })
+diff --git a/src/routes/orders/order-create-exchange/exchange-create.tsx b/src/routes/orders/order-create-exchange/exchange-create.tsx
+index e5ce6d0..3e877c2 100644
+--- a/src/routes/orders/order-create-exchange/exchange-create.tsx
++++ b/src/routes/orders/order-create-exchange/exchange-create.tsx
+@@ -1,5 +1,5 @@
+ import { toast } from "@medusajs/ui"
+-import { useEffect, useState } from "react"
++import { useEffect, useRef, useState } from "react"
+ import { useTranslation } from "react-i18next"
+ import { useNavigate, useParams } from "react-router-dom"
+ 
+@@ -33,12 +33,15 @@ export const ExchangeCreate = () => {
+     enabled: !!exchange?.return_id,
+   })
+ 
++  const initializedOrders = useRef(new Set<string>());
+   useEffect(() => {
+     async function run() {
+-      if (IS_REQUEST_RUNNING || !preview) {
++      if (!preview || initializedOrders.current.has(preview.id)) {
+         return
+       }
+ 
++      initializedOrders.current.add(preview.id);
++
+       if (preview.order_change) {
+         if (preview.order_change.change_type === "exchange") {
+           setActiveExchangeId(preview.order_change.exchange_id)
+diff --git a/src/routes/products/product-import/product-import.tsx b/src/routes/products/product-import/product-import.tsx
+index c539923..b5f0c1a 100644
+--- a/src/routes/products/product-import/product-import.tsx
++++ b/src/routes/products/product-import/product-import.tsx
+@@ -31,8 +31,8 @@ const ProductImportContent = () => {
+   const { t } = useTranslation()
+   const [filename, setFilename] = useState<string>()
+ 
+-  const { mutateAsync: importProducts, isPending, data } = useImportProducts()
+-  const { mutateAsync: confirm } = useConfirmImportProducts()
++  const { mutate: importProducts, isPending, data } = useImportProducts()
++  const { mutate: confirm } = useConfirmImportProducts()
+   const { handleSuccess } = useRouteModal()
+ 
+   const productImportTemplateContent = useMemo(() => {
+@@ -41,7 +41,7 @@ const ProductImportContent = () => {
+ 
+   const handleUploaded = async (file: File) => {
+     setFilename(file.name)
+-    await importProducts(
++    importProducts(
+       { file },
+       {
+         onError: (err) => {
+@@ -57,7 +57,7 @@ const ProductImportContent = () => {
+       return
+     }
+ 
+-    await confirm(data.transaction_id, {
++    confirm(data.transaction_id, {
+       onSuccess: () => {
+         toast.info(t("products.import.success.title"), {
+           description: t("products.import.success.description"),
+diff --git a/dist/order-create-claim-B4UQWQU5.mjs b/dist/order-create-claim-B4UQWQU5.mjs
+index 88a1d41..e5800ac 100644
+--- a/dist/order-create-claim-B4UQWQU5.mjs
++++ b/dist/order-create-claim-B4UQWQU5.mjs
+@@ -155,7 +155,7 @@ import "./chunk-QZ7TP4HQ.mjs";
+ 
+ // src/routes/orders/order-create-claim/claim-create.tsx
+ import { toast as toast3 } from "@medusajs/ui";
+-import { useEffect as useEffect3, useState as useState5 } from "react";
++import { useRef, useEffect as useEffect3, useState as useState5 } from "react";
+ import { useTranslation as useTranslation11 } from "react-i18next";
+ import { useNavigate, useParams } from "react-router-dom";
+ 
+@@ -2186,11 +2186,13 @@ var ClaimCreate = () => {
+   const { return: orderReturn } = useReturn(claim?.return_id, void 0, {
+     enabled: !!claim?.return_id
+   });
++  const initializedOrders = useRef(new Set());
+   useEffect3(() => {
+     async function run() {
+-      if (IS_REQUEST_RUNNING || !preview) {
++      if (!preview || initializedOrders.current.has(preview.id)) {
+         return;
+       }
++      initializedOrders.current.add(preview.id);
+       if (preview.order_change) {
+         if (preview.order_change.change_type === "claim") {
+           setActiveClaimId(preview.order_change.claim_id);
+diff --git a/dist/order-create-edit-75Z7SB47.mjs b/dist/order-create-edit-75Z7SB47.mjs
+index ad8c285..bf561bb 100644
+--- a/dist/order-create-edit-75Z7SB47.mjs
++++ b/dist/order-create-edit-75Z7SB47.mjs
+@@ -113,7 +113,7 @@ import "./chunk-QZ7TP4HQ.mjs";
+ 
+ // src/routes/orders/order-create-edit/order-edit-create.tsx
+ import { toast as toast4 } from "@medusajs/ui";
+-import { useEffect } from "react";
++import { useEffect, useRef } from "react";
+ import { useTranslation as useTranslation7 } from "react-i18next";
+ import { useNavigate, useParams } from "react-router-dom";
+ 
+@@ -772,11 +772,13 @@ var OrderEditCreate = () => {
+   });
+   const { order: preview } = useOrderPreview(id);
+   const { mutateAsync: createOrderEdit } = useCreateOrderEdit(order?.id ?? "");
++  const initializedOrders = useRef(new Set());
+   useEffect(() => {
+     async function run() {
+-      if (IS_REQUEST_RUNNING || !preview) {
++      if (!preview || initializedOrders.current.has(preview.id)) {
+         return;
+       }
++      initializedOrders.current.add(preview.id);
+       if (preview.order_change) {
+         if (preview.order_change.change_type !== "edit") {
+           navigate(`/orders/${preview.id}`, { replace: true });
+diff --git a/dist/order-create-exchange-YROMSPRA.mjs b/dist/order-create-exchange-YROMSPRA.mjs
+index f62607a..1cf7c38 100644
+--- a/dist/order-create-exchange-YROMSPRA.mjs
++++ b/dist/order-create-exchange-YROMSPRA.mjs
+@@ -155,7 +155,7 @@ import "./chunk-QZ7TP4HQ.mjs";
+ 
+ // src/routes/orders/order-create-exchange/exchange-create.tsx
+ import { toast as toast4 } from "@medusajs/ui";
+-import { useEffect as useEffect4, useState as useState6 } from "react";
++import { useRef, useEffect as useEffect4, useState as useState6 } from "react";
+ import { useTranslation as useTranslation12 } from "react-i18next";
+ import { useNavigate, useParams } from "react-router-dom";
+ 
+@@ -2131,11 +2131,13 @@ var ExchangeCreate = () => {
+   const { return: orderReturn } = useReturn(exchange?.return_id, void 0, {
+     enabled: !!exchange?.return_id
+   });
++  const initializedOrders = useRef(new Set());
+   useEffect4(() => {
+     async function run() {
+-      if (IS_REQUEST_RUNNING || !preview) {
++      if (!preview || initializedOrders.current.has(preview.id)) {
+         return;
+       }
++      initializedOrders.current.add(preview.id);
+       if (preview.order_change) {
+         if (preview.order_change.change_type === "exchange") {
+           setActiveExchangeId(preview.order_change.exchange_id);
+diff --git a/dist/product-import-2U7KNK6T.mjs b/dist/product-import-2U7KNK6T.mjs
+index 53c3a18..b38a30c 100644
+--- a/dist/product-import-2U7KNK6T.mjs
++++ b/dist/product-import-2U7KNK6T.mjs
+@@ -187,15 +187,15 @@ var ProductImport = () => {
+ var ProductImportContent = () => {
+   const { t } = useTranslation3();
+   const [filename, setFilename] = useState2();
+-  const { mutateAsync: importProducts, isPending, data } = useImportProducts();
+-  const { mutateAsync: confirm } = useConfirmImportProducts();
++  const { mutate: importProducts, isPending, data } = useImportProducts();
++  const { mutate: confirm } = useConfirmImportProducts();
+   const { handleSuccess } = useRouteModal();
+   const productImportTemplateContent = useMemo(() => {
+     return getProductImportCsvTemplate();
+   }, []);
+   const handleUploaded = async (file) => {
+     setFilename(file.name);
+-    await importProducts(
++    importProducts(
+       { file },
+       {
+         onError: (err) => {
+@@ -209,7 +209,7 @@ var ProductImportContent = () => {
+     if (!data?.transaction_id) {
+       return;
+     }
+-    await confirm(data.transaction_id, {
++    confirm(data.transaction_id, {
+       onSuccess: () => {
+         toast.info(t("products.import.success.title"), {
+           description: t("products.import.success.description")

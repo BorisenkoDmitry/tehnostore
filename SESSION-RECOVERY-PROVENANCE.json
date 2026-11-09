@@ -1,0 +1,31 @@
+{
+  "base_release": "release15k",
+  "followup": "expired-customer-session-recovery",
+  "files": [
+    {
+      "path": "apps/storefront/src/middleware.ts",
+      "sha256": "1ef535c3683e2d7e682ee350e26434aa5c310cbb6e3c8cc08f0124d209102799"
+    },
+    {
+      "path": "apps/storefront/src/lib/data/texno-cart.ts",
+      "sha256": "47f566a8ef98adce182e5ad0d2930c336b7df2bdbe1236a99b18b9646f04aaae"
+    },
+    {
+      "path": "apps/storefront/src/lib/util/customer-session.ts",
+      "sha256": "3531451ac463265f7dc58d355fef1f3a33a8796124869c9905e7991ea7a2e13f"
+    },
+    {
+      "path": "apps/storefront/src/lib/util/__tests__/customer-session.test.cjs",
+      "sha256": "6cef537569bbceda34a421f5918b3280da561afed6a7024b62ae755cb303661f"
+    }
+  ],
+  "verification": {
+    "focused_tests": 9,
+    "production_storefront_build": "PASS",
+    "browser_fresh_visitor_http": 200,
+    "browser_stale_session_http": 200,
+    "expired_auth_cookie_removed": true,
+    "guest_cart_capability_preserved": true,
+    "database_mutations": false
+  }
+}

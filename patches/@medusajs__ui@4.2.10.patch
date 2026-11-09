@@ -1,0 +1,270 @@
+diff --git a/dist/cjs/blocks/data-table/components/data-table-pagination.js b/dist/cjs/blocks/data-table/components/data-table-pagination.js
+index c544268..801f040 100644
+--- a/dist/cjs/blocks/data-table/components/data-table-pagination.js
++++ b/dist/cjs/blocks/data-table/components/data-table-pagination.js
+@@ -18,7 +18,7 @@ const DataTablePagination = (props) => {
+     if (instance.showSkeleton) {
+         return React.createElement(DataTablePaginationSkeleton, null);
+     }
+-    return (React.createElement(table_1.Table.Pagination, { translations: props.translations, className: "shrink-0", canNextPage: instance.getCanNextPage(), canPreviousPage: instance.getCanPreviousPage(), pageCount: instance.getPageCount(), count: instance.rowCount, nextPage: instance.nextPage, previousPage: instance.previousPage, pageIndex: instance.pageIndex, pageSize: instance.pageSize }));
++    return (React.createElement(table_1.Table.Pagination, { translations: props.translations, className: "shrink-0", canNextPage: instance.getCanNextPage(), canPreviousPage: instance.getCanPreviousPage(), pageCount: instance.getPageCount(), count: instance.rowCount, nextPage: instance.nextPage, setPageIndex: instance.setPageIndex, previousPage: instance.previousPage, pageIndex: instance.pageIndex, pageSize: instance.pageSize }));
+ };
+ exports.DataTablePagination = DataTablePagination;
+ DataTablePagination.displayName = "DataTable.Pagination";
+diff --git a/dist/cjs/blocks/data-table/use-data-table.d.ts b/dist/cjs/blocks/data-table/use-data-table.d.ts
+index 0afdf11..3dce073 100644
+--- a/dist/cjs/blocks/data-table/use-data-table.d.ts
++++ b/dist/cjs/blocks/data-table/use-data-table.d.ts
+@@ -89,7 +89,7 @@ interface DataTableOptions<TData> extends Pick<TableOptions<TData>, "data" | "ge
+         onColumnOrderChange: (state: ColumnOrderState) => void;
+     };
+ }
+-interface UseDataTableReturn<TData> extends Pick<ReturnType<typeof useReactTable<TData>>, "getHeaderGroups" | "getRowModel" | "getCanNextPage" | "getCanPreviousPage" | "nextPage" | "previousPage" | "getPageCount" | "getAllColumns" | "setColumnVisibility" | "setColumnOrder"> {
++interface UseDataTableReturn<TData> extends Pick<ReturnType<typeof useReactTable<TData>>, "getHeaderGroups" | "getRowModel" | "getCanNextPage" | "getCanPreviousPage" | "nextPage" | "previousPage" | "setPageIndex" | "getPageCount" | "getAllColumns" | "setColumnVisibility" | "setColumnOrder"> {
+     getSorting: () => DataTableSortingState | null;
+     setSorting: (sortingOrUpdater: DataTableSortingState | ((prev: DataTableSortingState | null) => DataTableSortingState)) => void;
+     getFilters: () => DataTableFilter[];
+diff --git a/dist/cjs/blocks/data-table/use-data-table.js b/dist/cjs/blocks/data-table/use-data-table.js
+index 6e28087..d459b9e 100644
+--- a/dist/cjs/blocks/data-table/use-data-table.js
++++ b/dist/cjs/blocks/data-table/use-data-table.js
+@@ -233,6 +233,7 @@ const useDataTable = ({ rowCount = 0, filters, commands, rowSelection, sorting,
+         getCanNextPage: instance.getCanNextPage,
+         getCanPreviousPage: instance.getCanPreviousPage,
+         nextPage: instance.nextPage,
++        setPageIndex: instance.setPageIndex,
+         previousPage: instance.previousPage,
+         getPageCount: instance.getPageCount,
+         pageIndex: (_c = (_b = (_a = instance.getState()) === null || _a === void 0 ? void 0 : _a.pagination) === null || _b === void 0 ? void 0 : _b.pageIndex) !== null && _c !== void 0 ? _c : 0,
+diff --git a/dist/cjs/components/table/table.d.ts b/dist/cjs/components/table/table.d.ts
+index 002680a..720d4df 100644
+--- a/dist/cjs/components/table/table.d.ts
++++ b/dist/cjs/components/table/table.d.ts
+@@ -14,6 +14,7 @@ interface TablePaginationProps extends React.HTMLAttributes<HTMLDivElement> {
+         next?: string;
+     };
+     previousPage: () => void;
++    setPageIndex?: (index: number) => void;
+     nextPage: () => void;
+ }
+ declare const Table: React.ForwardRefExoticComponent<React.HTMLAttributes<HTMLTableElement> & React.RefAttributes<HTMLTableElement>> & {
+diff --git a/dist/cjs/components/table/table.js b/dist/cjs/components/table/table.js
+index 3b4814c..60ae69c 100644
+--- a/dist/cjs/components/table/table.js
++++ b/dist/cjs/components/table/table.js
+@@ -5,6 +5,7 @@ const tslib_1 = require("tslib");
+ const icons_1 = require("@medusajs/icons");
+ const React = tslib_1.__importStar(require("react"));
+ const button_1 = require("../button/index.js");
++const input_1 = require("../input/index.js");
+ const clx_1 = require("../../utils/clx.js");
+ /**
+  * This component is based on the table element and its various children:
+@@ -67,7 +68,7 @@ nextPage,
+  * A function that handles navigating to the previous page.
+  * This function should handle retrieving data for the previous page.
+  */
+-previousPage, 
++previousPage, setPageIndex,
+ /**
+  * An optional object of words to use in the pagination component.
+  * Use this to override the default words, or translate them into another language.
+@@ -79,17 +80,34 @@ translations = {
+     prev: "Prev",
+     next: "Next",
+ }, ...props }, ref) => {
++    const [pageInput, setPageInput] = React.useState("");
++    const currentPage = pageIndex + 1;
++    const requested = Number(pageInput.trim());
++    const valid = /^\d+$/.test(pageInput.trim()) && requested >= 1 && requested <= pageCount;
++    const start = Math.max(2, Math.min(currentPage - 1, pageCount - 3));
++    const end = Math.min(pageCount - 1, start + 2);
++    const goToPage = (page) => {
++        setPageInput("");
++        setPageIndex(page - 1);
++    };
++    const pageButton = (page) => React.createElement(button_1.Button, {
++        key: page, type: "button", size: "small",
++        variant: page === currentPage ? "primary" : "secondary",
++        "aria-label": "Page " + page,
++        "aria-current": page === currentPage ? "page" : undefined,
++        onClick: () => goToPage(page),
++    }, page);
+     const { from, to } = React.useMemo(() => {
+         const from = count === 0 ? count : pageIndex * pageSize + 1;
+         const to = Math.min(count, (pageIndex + 1) * pageSize);
+         return { from, to };
+     }, [count, pageIndex, pageSize]);
+-    return (React.createElement("div", { ref: ref, className: (0, clx_1.clx)("txt-compact-small-plus flex w-full items-center justify-between px-3 py-4 text-ui-fg-subtle", className), ...props },
++    return (React.createElement("div", { ref: ref, className: (0, clx_1.clx)("txt-compact-small-plus flex w-full flex-wrap items-center justify-between gap-2 px-3 py-4 text-ui-fg-subtle", className), ...props },
+         React.createElement("div", { className: "inline-flex items-center gap-x-1 px-3 py-[5px]" },
+             React.createElement("p", null, from),
+             React.createElement(icons_1.Minus, { className: "text-ui-fg-muted" }),
+             React.createElement("p", null, `${to} ${translations.of} ${count} ${translations.results}`)),
+-        React.createElement("div", { className: "flex items-center gap-x-2" },
++        React.createElement("div", { className: "flex flex-wrap items-center gap-2" },
+             React.createElement("div", { className: "inline-flex items-center gap-x-1 px-3 py-[5px]" },
+                 React.createElement("p", null,
+                     pageIndex + 1,
+@@ -100,7 +118,25 @@ translations = {
+                     " ",
+                     translations.pages)),
+             React.createElement(button_1.Button, { type: "button", variant: "transparent", onClick: previousPage, disabled: !canPreviousPage }, translations.prev),
+-            React.createElement(button_1.Button, { type: "button", variant: "transparent", onClick: nextPage, disabled: !canNextPage }, translations.next))));
++            setPageIndex && pageCount > 1 && React.createElement(React.Fragment, null,
++                pageButton(1),
++                start > 2 && React.createElement("span", { "aria-hidden": true }, "…"),
++                Array.from({ length: Math.max(0, end - start + 1) }, (_, index) => pageButton(start + index)),
++                end < pageCount - 1 && React.createElement("span", { "aria-hidden": true }, "…"),
++                pageButton(pageCount)),
++            React.createElement(button_1.Button, { type: "button", variant: "transparent", onClick: nextPage, disabled: !canNextPage }, translations.next),
++            setPageIndex && pageCount > 1 && React.createElement("div", { className: "flex items-center gap-2" },
++                React.createElement(input_1.Input, {
++                    className: "w-20", inputMode: "numeric", "aria-label": "Page number",
++                    value: pageInput, placeholder: String(currentPage),
++                    onChange: (event) => setPageInput(event.target.value),
++                    onKeyDown: (event) => {
++                        if (event.key !== "Enter") return;
++                        event.preventDefault();
++                        if (valid) goToPage(requested);
++                    },
++                }),
++                React.createElement(button_1.Button, { type: "button", variant: "secondary", size: "small", disabled: !valid, onClick: () => goToPage(requested) }, "Go")))));
+ });
+ Pagination.displayName = "Table.Pagination";
+ const Table = Object.assign(Root, {
+diff --git a/dist/esm/blocks/data-table/components/data-table-pagination.js b/dist/esm/blocks/data-table/components/data-table-pagination.js
+index b3df4f1..801c9c0 100644
+--- a/dist/esm/blocks/data-table/components/data-table-pagination.js
++++ b/dist/esm/blocks/data-table/components/data-table-pagination.js
+@@ -14,7 +14,7 @@ const DataTablePagination = (props) => {
+     if (instance.showSkeleton) {
+         return React.createElement(DataTablePaginationSkeleton, null);
+     }
+-    return (React.createElement(Table.Pagination, { translations: props.translations, className: "shrink-0", canNextPage: instance.getCanNextPage(), canPreviousPage: instance.getCanPreviousPage(), pageCount: instance.getPageCount(), count: instance.rowCount, nextPage: instance.nextPage, previousPage: instance.previousPage, pageIndex: instance.pageIndex, pageSize: instance.pageSize }));
++    return (React.createElement(Table.Pagination, { translations: props.translations, className: "shrink-0", canNextPage: instance.getCanNextPage(), canPreviousPage: instance.getCanPreviousPage(), pageCount: instance.getPageCount(), count: instance.rowCount, nextPage: instance.nextPage, setPageIndex: instance.setPageIndex, previousPage: instance.previousPage, pageIndex: instance.pageIndex, pageSize: instance.pageSize }));
+ };
+ DataTablePagination.displayName = "DataTable.Pagination";
+ const DataTablePaginationSkeleton = () => {
+diff --git a/dist/esm/blocks/data-table/use-data-table.d.ts b/dist/esm/blocks/data-table/use-data-table.d.ts
+index 0afdf11..3dce073 100644
+--- a/dist/esm/blocks/data-table/use-data-table.d.ts
++++ b/dist/esm/blocks/data-table/use-data-table.d.ts
+@@ -89,7 +89,7 @@ interface DataTableOptions<TData> extends Pick<TableOptions<TData>, "data" | "ge
+         onColumnOrderChange: (state: ColumnOrderState) => void;
+     };
+ }
+-interface UseDataTableReturn<TData> extends Pick<ReturnType<typeof useReactTable<TData>>, "getHeaderGroups" | "getRowModel" | "getCanNextPage" | "getCanPreviousPage" | "nextPage" | "previousPage" | "getPageCount" | "getAllColumns" | "setColumnVisibility" | "setColumnOrder"> {
++interface UseDataTableReturn<TData> extends Pick<ReturnType<typeof useReactTable<TData>>, "getHeaderGroups" | "getRowModel" | "getCanNextPage" | "getCanPreviousPage" | "nextPage" | "previousPage" | "setPageIndex" | "getPageCount" | "getAllColumns" | "setColumnVisibility" | "setColumnOrder"> {
+     getSorting: () => DataTableSortingState | null;
+     setSorting: (sortingOrUpdater: DataTableSortingState | ((prev: DataTableSortingState | null) => DataTableSortingState)) => void;
+     getFilters: () => DataTableFilter[];
+diff --git a/dist/esm/blocks/data-table/use-data-table.js b/dist/esm/blocks/data-table/use-data-table.js
+index 9762932..7c9483c 100644
+--- a/dist/esm/blocks/data-table/use-data-table.js
++++ b/dist/esm/blocks/data-table/use-data-table.js
+@@ -229,6 +229,7 @@ const useDataTable = ({ rowCount = 0, filters, commands, rowSelection, sorting,
+         getCanNextPage: instance.getCanNextPage,
+         getCanPreviousPage: instance.getCanPreviousPage,
+         nextPage: instance.nextPage,
++        setPageIndex: instance.setPageIndex,
+         previousPage: instance.previousPage,
+         getPageCount: instance.getPageCount,
+         pageIndex: (_c = (_b = (_a = instance.getState()) === null || _a === void 0 ? void 0 : _a.pagination) === null || _b === void 0 ? void 0 : _b.pageIndex) !== null && _c !== void 0 ? _c : 0,
+diff --git a/dist/esm/components/table/table.d.ts b/dist/esm/components/table/table.d.ts
+index 002680a..720d4df 100644
+--- a/dist/esm/components/table/table.d.ts
++++ b/dist/esm/components/table/table.d.ts
+@@ -14,6 +14,7 @@ interface TablePaginationProps extends React.HTMLAttributes<HTMLDivElement> {
+         next?: string;
+     };
+     previousPage: () => void;
++    setPageIndex?: (index: number) => void;
+     nextPage: () => void;
+ }
+ declare const Table: React.ForwardRefExoticComponent<React.HTMLAttributes<HTMLTableElement> & React.RefAttributes<HTMLTableElement>> & {
+diff --git a/dist/esm/components/table/table.js b/dist/esm/components/table/table.js
+index fa522bf..57bec05 100644
+--- a/dist/esm/components/table/table.js
++++ b/dist/esm/components/table/table.js
+@@ -1,6 +1,7 @@
+ import { Minus } from "@medusajs/icons";
+ import * as React from "react";
+ import { Button } from "../button/index.js";
++import { Input } from "../input/index.js";
+ import { clx } from "../../utils/clx.js";
+ /**
+  * This component is based on the table element and its various children:
+@@ -63,7 +64,7 @@ nextPage,
+  * A function that handles navigating to the previous page.
+  * This function should handle retrieving data for the previous page.
+  */
+-previousPage, 
++previousPage, setPageIndex,
+ /**
+  * An optional object of words to use in the pagination component.
+  * Use this to override the default words, or translate them into another language.
+@@ -75,17 +76,34 @@ translations = {
+     prev: "Prev",
+     next: "Next",
+ }, ...props }, ref) => {
++    const [pageInput, setPageInput] = React.useState("");
++    const currentPage = pageIndex + 1;
++    const requested = Number(pageInput.trim());
++    const valid = /^\d+$/.test(pageInput.trim()) && requested >= 1 && requested <= pageCount;
++    const start = Math.max(2, Math.min(currentPage - 1, pageCount - 3));
++    const end = Math.min(pageCount - 1, start + 2);
++    const goToPage = (page) => {
++        setPageInput("");
++        setPageIndex(page - 1);
++    };
++    const pageButton = (page) => React.createElement(Button, {
++        key: page, type: "button", size: "small",
++        variant: page === currentPage ? "primary" : "secondary",
++        "aria-label": "Page " + page,
++        "aria-current": page === currentPage ? "page" : undefined,
++        onClick: () => goToPage(page),
++    }, page);
+     const { from, to } = React.useMemo(() => {
+         const from = count === 0 ? count : pageIndex * pageSize + 1;
+         const to = Math.min(count, (pageIndex + 1) * pageSize);
+         return { from, to };
+     }, [count, pageIndex, pageSize]);
+-    return (React.createElement("div", { ref: ref, className: clx("txt-compact-small-plus flex w-full items-center justify-between px-3 py-4 text-ui-fg-subtle", className), ...props },
++    return (React.createElement("div", { ref: ref, className: clx("txt-compact-small-plus flex w-full flex-wrap items-center justify-between gap-2 px-3 py-4 text-ui-fg-subtle", className), ...props },
+         React.createElement("div", { className: "inline-flex items-center gap-x-1 px-3 py-[5px]" },
+             React.createElement("p", null, from),
+             React.createElement(Minus, { className: "text-ui-fg-muted" }),
+             React.createElement("p", null, `${to} ${translations.of} ${count} ${translations.results}`)),
+-        React.createElement("div", { className: "flex items-center gap-x-2" },
++        React.createElement("div", { className: "flex flex-wrap items-center gap-2" },
+             React.createElement("div", { className: "inline-flex items-center gap-x-1 px-3 py-[5px]" },
+                 React.createElement("p", null,
+                     pageIndex + 1,
+@@ -96,7 +114,25 @@ translations = {
+                     " ",
+                     translations.pages)),
+             React.createElement(Button, { type: "button", variant: "transparent", onClick: previousPage, disabled: !canPreviousPage }, translations.prev),
+-            React.createElement(Button, { type: "button", variant: "transparent", onClick: nextPage, disabled: !canNextPage }, translations.next))));
++            setPageIndex && pageCount > 1 && React.createElement(React.Fragment, null,
++                pageButton(1),
++                start > 2 && React.createElement("span", { "aria-hidden": true }, "…"),
++                Array.from({ length: Math.max(0, end - start + 1) }, (_, index) => pageButton(start + index)),
++                end < pageCount - 1 && React.createElement("span", { "aria-hidden": true }, "…"),
++                pageButton(pageCount)),
++            React.createElement(Button, { type: "button", variant: "transparent", onClick: nextPage, disabled: !canNextPage }, translations.next),
++            setPageIndex && pageCount > 1 && React.createElement("div", { className: "flex items-center gap-2" },
++                React.createElement(Input, {
++                    className: "w-20", inputMode: "numeric", "aria-label": "Page number",
++                    value: pageInput, placeholder: String(currentPage),
++                    onChange: (event) => setPageInput(event.target.value),
++                    onKeyDown: (event) => {
++                        if (event.key !== "Enter") return;
++                        event.preventDefault();
++                        if (valid) goToPage(requested);
++                    },
++                }),
++                React.createElement(Button, { type: "button", variant: "secondary", size: "small", disabled: !valid, onClick: () => goToPage(requested) }, "Go")))));
+ });
+ Pagination.displayName = "Table.Pagination";
+ const Table = Object.assign(Root, {

@@ -10,7 +10,9 @@ import { HttpTypes } from "@medusajs/types"
 import CountrySelect from "@modules/checkout/components/country-select"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
 import Input from "@modules/common/components/input"
+import { useRouter } from "next/navigation"
 import Modal from "@modules/common/components/modal"
+import { safeAccountAction } from "../../lib/actions"
 import { Button, Heading, Text, clx } from "@modules/common/components/ui"
 import Spinner from "@modules/common/icons/spinner"
 import React, { useActionState, useEffect, useState } from "react"
@@ -27,10 +29,12 @@ const EditAddress: React.FC<EditAddressProps> = ({
   isActive = false,
 }) => {
   const [removing, setRemoving] = useState(false)
+  const [removeError, setRemoveError] = useState("")
   const [successState, setSuccessState] = useState(false)
+  const router = useRouter()
   const { state, open, close: closeModal } = useToggleState(false)
 
-  const [formState, formAction] = useActionState(updateCustomerAddress, {
+  const [formState, formAction] = useActionState(safeAccountAction(updateCustomerAddress, { success: false, error: "Связь прервалась. Проверьте интернет и повторите сохранение." }), {
     success: false,
     error: null,
   } as { success: boolean; error: string | null })
@@ -50,13 +54,14 @@ const EditAddress: React.FC<EditAddressProps> = ({
   useEffect(() => {
     if (formState.success) {
       setSuccessState(true)
+      router.refresh()
     }
-  }, [formState])
+  }, [formState, router])
 
   const removeAddress = async () => {
     setRemoving(true)
-    await deleteCustomerAddress(address.id)
-    setRemoving(false)
+    setRemoveError("")
+    try { await deleteCustomerAddress(address.id); router.refresh() } catch { setRemoveError("Не удалось удалить адрес. Повторите попытку.") } finally { setRemoving(false) }
   }
 
   return (
@@ -73,25 +78,15 @@ const EditAddress: React.FC<EditAddressProps> = ({
         <div className="flex flex-col">
           <Heading
             className="text-left text-base-semi"
-            data-testid="address-name"
+            data-testid="address-address"
           >
-            {address.first_name} {address.last_name}
+            {address.address_1}
+            {address.address_2 && <span>, {address.address_2}</span>}
           </Heading>
-          {address.company && (
-            <Text
-              className="txt-compact-small text-ui-fg-base"
-              data-testid="address-company"
-            >
-              {address.company}
-            </Text>
-          )}
+          {address.is_default_shipping && <Text className="text-sm text-ui-fg-subtle mb-2">Для доставки по умолчанию</Text>}
           <Text className="flex flex-col text-left text-base-regular mt-2">
-            <span data-testid="address-address">
-              {address.address_1}
-              {address.address_2 && <span>, {address.address_2}</span>}
-            </span>
-            <span data-testid="address-postal-city">
-              {address.postal_code}, {address.city}
+            <span data-testid="address-city">
+              {address.city}
             </span>
             <span data-testid="address-province-country">
               {address.province && `${address.province}, `}
@@ -101,59 +96,38 @@ const EditAddress: React.FC<EditAddressProps> = ({
         </div>
         <div className="flex items-center gap-x-4">
           <button
+            type="button"
             className="text-small-regular text-ui-fg-base flex items-center gap-x-2"
             onClick={open}
             data-testid="address-edit-button"
           >
             <Edit />
-            Edit
+            Изменить
           </button>
           <button
+            type="button"
+            disabled={removing}
             className="text-small-regular text-ui-fg-base flex items-center gap-x-2"
             onClick={removeAddress}
             data-testid="address-delete-button"
           >
             {removing ? <Spinner /> : <Trash />}
-            Remove
+            Удалить
           </button>
         </div>
+        {removeError && <p role="alert" className="text-red-700 text-sm mt-3">{removeError}</p>}
       </div>
 
       <Modal isOpen={state} close={close} data-testid="edit-address-modal">
         <Modal.Title>
-          <Heading className="mb-2">Edit address</Heading>
+          <Heading className="mb-2">Изменить адрес</Heading>
         </Modal.Title>
-        <form action={formAction}>
+        <form action={formAction} className="min-h-0 flex flex-1 flex-col">
           <input type="hidden" name="addressId" value={address.id} />
           <Modal.Body>
-            <div className="grid grid-cols-1 gap-y-2">
-              <div className="grid grid-cols-2 gap-x-2">
-                <Input
-                  label="First name"
-                  name="first_name"
-                  required
-                  autoComplete="given-name"
-                  defaultValue={address.first_name || undefined}
-                  data-testid="first-name-input"
-                />
-                <Input
-                  label="Last name"
-                  name="last_name"
-                  required
-                  autoComplete="family-name"
-                  defaultValue={address.last_name || undefined}
-                  data-testid="last-name-input"
-                />
-              </div>
+            <div className="grid grid-cols-1 w-full gap-y-3">
               <Input
-                label="Company"
-                name="company"
-                autoComplete="organization"
-                defaultValue={address.company || undefined}
-                data-testid="company-input"
-              />
-              <Input
-                label="Address"
+                label="Улица и номер дома"
                 name="address_1"
                 required
                 autoComplete="address-line1"
@@ -161,38 +135,28 @@ const EditAddress: React.FC<EditAddressProps> = ({
                 data-testid="address-1-input"
               />
               <Input
-                label="Apartment, suite, etc."
+                label="Квартира, подъезд, этаж"
                 name="address_2"
                 autoComplete="address-line2"
                 defaultValue={address.address_2 || undefined}
                 data-testid="address-2-input"
               />
-              <div className="grid grid-cols-[144px_1fr] gap-x-2">
-                <Input
-                  label="Postal code"
-                  name="postal_code"
-                  required
-                  autoComplete="postal-code"
-                  defaultValue={address.postal_code || undefined}
-                  data-testid="postal-code-input"
-                />
-                <Input
-                  label="City"
-                  name="city"
-                  required
-                  autoComplete="locality"
-                  defaultValue={address.city || undefined}
-                  data-testid="city-input"
-                />
-              </div>
               <Input
-                label="Province / State"
+                label="Город"
+                name="city"
+                required
+                autoComplete="locality"
+                defaultValue={address.city || undefined}
+                data-testid="city-input"
+              />
+              <Input
+                label="Область или регион"
                 name="province"
                 autoComplete="address-level1"
                 defaultValue={address.province || undefined}
                 data-testid="state-input"
               />
-              <CountrySelect
+              <CountrySelect aria-label="Страна" placeholder="Страна"
                 name="country_code"
                 region={region}
                 required
@@ -200,13 +164,8 @@ const EditAddress: React.FC<EditAddressProps> = ({
                 defaultValue={address.country_code || undefined}
                 data-testid="country-select"
               />
-              <Input
-                label="Phone"
-                name="phone"
-                autoComplete="phone"
-                defaultValue={address.phone || undefined}
-                data-testid="phone-input"
-              />
+              <input type="hidden" name="shipping_default_control" value="true" />
+              <label className="flex items-center gap-3 text-sm min-h-11"><input type="checkbox" name="is_default_shipping" defaultChecked={address.is_default_shipping} />Адрес доставки по умолчанию</label>
             </div>
             {formState.error && (
               <div className="text-rose-500 text-small-regular py-2">
@@ -223,9 +182,9 @@ const EditAddress: React.FC<EditAddressProps> = ({
                 className="h-10"
                 data-testid="cancel-button"
               >
-                Cancel
+                Отмена
               </Button>
-              <SubmitButton data-testid="save-button">Save</SubmitButton>
+              <SubmitButton data-testid="save-button">Сохранить</SubmitButton>
             </div>
           </Modal.Footer>
         </form>

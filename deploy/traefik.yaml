@@ -20,4 +20,4 @@ http:
     tehnostore:
       loadBalancer:
         servers:
-          - url: http://tehnostore-gateway:80
+          - url: http://phone-store-production-gateway:80

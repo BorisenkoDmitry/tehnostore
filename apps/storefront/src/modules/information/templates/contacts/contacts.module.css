@@ -1,0 +1,242 @@
+.page {
+  color: var(--texno-ink);
+}
+.mainGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(32px, 5cqw, 72px);
+}
+.departments {
+  display: grid;
+}
+.department {
+  min-width: 0;
+  padding: 24px 0;
+  border-top: 1px solid #e6edf3;
+}
+.department:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+.department:last-child {
+  padding-bottom: 0;
+}
+.departmentHeading,
+.formHeading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.departmentHeading > svg,
+.formHeading > svg {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  margin-top: 2px;
+  color: var(--texno-blue);
+}
+.department h2,
+.formHeading h2 {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -.02em;
+  line-height: 1.4;
+}
+.departmentBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 20px;
+  margin-top: 16px;
+}
+.contactLinks a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  width: fit-content;
+  color: var(--texno-blue);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.contactLinks svg,
+.hours svg {
+  flex: 0 0 17px;
+  width: 17px;
+  height: 17px;
+  color: var(--texno-blue);
+}
+.extension {
+  display: inline-block;
+  color: #526170;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.hours h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+.schedule {
+  display: grid;
+  gap: 6px;
+  color: #526170;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.schedule > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.schedule dd {
+  color: var(--texno-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.formPanel {
+  min-width: 0;
+  padding: 32px;
+  border-radius: 12px;
+  background: #f7f8fa;
+}
+.formHeading {
+  margin-bottom: 12px;
+}
+.form {
+  display: grid;
+  gap: 20px;
+}
+.formIntro {
+  margin-bottom: 4px;
+  color: #526170;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.field {
+  display: grid;
+  gap: 8px;
+}
+.field label {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+.field input,
+.field textarea {
+  width: 100%;
+  min-height: 50px;
+  padding: 12px 14px;
+  border: 1px solid #c5cfd9;
+  border-radius: 8px;
+  background: white;
+  color: var(--texno-ink);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.6;
+  transition: border-color 160ms ease-out, outline-color 160ms ease-out;
+}
+.field input::placeholder,
+.field textarea::placeholder {
+  color: #637181;
+  opacity: 1;
+}
+.field input:hover,
+.field textarea:hover {
+  border-color: #526170;
+}
+.field textarea {
+  resize: vertical;
+  min-height: 140px;
+}
+.field input:focus-visible,
+.field textarea:focus-visible {
+  border-color: var(--texno-blue);
+  outline: 2px solid var(--texno-blue);
+  outline-offset: 3px;
+}
+.field [aria-invalid="true"] {
+  border-color: var(--texno-ink);
+  border-style: dashed;
+}
+.fieldError {
+  color: var(--texno-ink);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.formNote {
+  max-width: 64ch;
+  color: #526170;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.form .emailButton {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0;
+}
+.formNote a {
+  color: var(--texno-blue);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.contactLinks a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+@container storefront (max-width: 1100px) {
+  .departmentBody {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .hours {
+    max-width: 260px;
+  }
+  .formPanel {
+    padding: 28px;
+  }
+}
+@container storefront (max-width: 760px) {
+  .mainGrid {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+  .department h2 {
+    font-size: 18px;
+  }
+  .departmentBody {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 20px;
+  }
+  .formPanel {
+    padding: 28px;
+  }
+}
+@container storefront (max-width: 500px) {
+  .departmentBody {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .hours {
+    max-width: none;
+  }
+  .hours h3 {
+    min-height: 30px;
+  }
+  .schedule {
+    padding-left: 27px;
+  }
+  .formPanel {
+    padding: 24px 20px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .field input,
+  .field textarea {
+    transition: none;
+  }
+}

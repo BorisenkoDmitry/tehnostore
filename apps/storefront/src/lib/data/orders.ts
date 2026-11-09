@@ -14,19 +14,27 @@ export const retrieveOrder = async (id: string) => {
     ...(await getCacheOptions("orders")),
   }
 
-  return sdk.client
-    .fetch<HttpTypes.StoreOrderResponse>(`/store/orders/${id}`, {
+  const order = await sdk.client
+    .fetch<HttpTypes.StoreOrderResponse>(`/store/orders/${encodeURIComponent(id)}`, {
       method: "GET",
       query: {
         fields:
-          "*payment_collections.payments,*items,*items.metadata,*items.variant,*items.product",
+          "*shipping_address,*payment_collections.payments,*items,*items.metadata,*items.variant,*items.product",
       },
       headers,
       next,
-      cache: "force-cache",
+      cache: "no-store",
     })
     .then(({ order }) => order)
     .catch((err) => medusaError(err))
+  if (!order || !("authorization" in headers)) return order
+  const checkout = await sdk.client.fetch<{ checkout: Record<string, unknown> }>(`/store/texno-orders/${encodeURIComponent(id)}`, { headers, cache: "no-store" })
+    .then((result) => result.checkout)
+    .catch((error) => {
+      if (error && typeof error === "object" && "status" in error && [400, 403, 404].includes(Number(error.status))) return undefined
+      throw error
+    })
+  return { ...order, metadata: checkout ? { texno_order: checkout } : undefined }
 }
 
 export const listOrders = async (
@@ -54,7 +62,7 @@ export const listOrders = async (
       },
       headers,
       next,
-      cache: "force-cache",
+      cache: "no-store",
     })
     .then(({ orders }) => orders)
     .catch((err) => medusaError(err))

@@ -1,15 +1,13 @@
-import Image from "next/image"
 import { getNavigation } from "@lib/data/navigation"
-import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { MenuLink } from "@modules/layout/components/storefront-shell"
+import { getCatalogConfig } from "@lib/data/catalog"
+import { getSiteSettings } from "@lib/data/content"
+import FooterContent, { type FooterSettings } from "./content"
 
 export default async function Footer() {
-  const navigation = await getNavigation()
-  return <footer className="texno-footer">
-    <div className="texno-container texno-footer-inner">
-    <LocalizedClientLink href="/" aria-label="TEXNO STORE — главная"><Image src="/images/texno-logo.svg" alt="TEXNO STORE" width={174} height={22} /></LocalizedClientLink>
-    <nav aria-label="Информация о магазине">{navigation?.items.filter((item) => item.kind === "link").map((item) => <MenuLink key={item.id} item={item} />)}</nav>
-    <span>© {new Date().getFullYear()} TEXNO STORE</span>
-    </div>
-  </footer>
+  const [navigation, settings, catalog] = await Promise.all([getNavigation(), getSiteSettings().catch((error) => {
+    console.error("Unable to load published footer settings", error)
+    return null
+  }), getCatalogConfig()])
+  if (!settings?.footer) return null
+  return <FooterContent settings={settings as FooterSettings} navigation={navigation} categories={catalog?.categories ?? []} />
 }

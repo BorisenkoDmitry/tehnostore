@@ -11,7 +11,7 @@ export const PRODUCT_INDEX_NAME = "product"
  * The currencies the product index holds prices in, one field set each. Keep
  * in sync with `PRICE_CURRENCIES` in the backend's `src/search/product.ts`.
  */
-export const SEARCH_PRICE_CURRENCIES = ["eur", "usd"]
+export const SEARCH_PRICE_CURRENCIES = ["eur", "usd", "rub"]
 
 export type PriceField =
   | "min_price"
@@ -45,6 +45,7 @@ export const { searchClient } = createInstantSearchAdapter({
   additionalSearchParameters: {
     search_options: {
       match_strategy: "last",
+      count: "exact",
     },
   },
   // Range widgets read `facets_stats`, which the adapter only produces for
@@ -52,6 +53,7 @@ export const { searchClient } = createInstantSearchAdapter({
   // the index, which is what makes the stats available at all.
   numericAttributes: SEARCH_PRICE_CURRENCIES.flatMap((currency) => [
     `min_price_${currency}`,
+    `min_sale_price_${currency}`,
     `max_price_${currency}`,
   ]),
 })

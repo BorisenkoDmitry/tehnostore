@@ -6,6 +6,7 @@ RUN apk add --no-cache python3 make g++ git libc6-compat \
 
 WORKDIR /server
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches ./patches
 COPY apps/backend/package.json apps/backend/package.json
 COPY apps/storefront/package.json apps/storefront/package.json
 RUN --mount=type=cache,id=texno-pnpm,target=/pnpm/store \

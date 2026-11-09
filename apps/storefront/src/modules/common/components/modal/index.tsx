@@ -24,7 +24,7 @@ const Modal = ({
 }: ModalProps) => {
   return (
     <Transition appear show={isOpen} as={Fragment}>
-      <Dialog as="div" className="relative z-[75]" onClose={close}>
+      <Dialog as="div" className="fixed inset-0 z-[75]" onClose={close}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
@@ -59,7 +59,7 @@ const Modal = ({
               <Dialog.Panel
                 data-testid={dataTestId}
                 className={clx(
-                  "flex flex-col justify-start w-full transform p-5 text-left align-middle transition-all max-h-[75vh] h-fit",
+                  "flex flex-col justify-start w-full transform p-5 text-left align-middle transition-all max-h-[calc(100dvh-32px)] min-h-0 h-fit",
                   {
                     "max-w-md": size === "small",
                     "max-w-xl": size === "medium",
@@ -83,10 +83,10 @@ const Title: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { close } = useModal()
 
   return (
-    <Dialog.Title className="flex items-center justify-between">
+    <Dialog.Title as="div" className="flex items-center justify-between gap-4 shrink-0">
       <div className="text-large-semi">{children}</div>
       <div>
-        <button onClick={close} data-testid="close-modal-button">
+        <button type="button" aria-label="Закрыть" className="flex min-h-11 min-w-11 items-center justify-center" onClick={close} data-testid="close-modal-button">
           <X size={20} />
         </button>
       </div>
@@ -103,7 +103,7 @@ const Description: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 }
 
 const Body: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  return <div className="flex justify-center">{children}</div>
+  return <div className="min-h-0 flex-1 overflow-y-auto w-full">{children}</div>
 }
 
 const Footer: React.FC<{ children: React.ReactNode }> = ({ children }) => {

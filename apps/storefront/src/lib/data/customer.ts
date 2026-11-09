@@ -6,11 +6,10 @@ import { HttpTypes } from "@medusajs/types"
 import { FetchError } from "@medusajs/js-sdk"
 import { revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
+import { claimTexnoCart, clearTexnoCartCapability, retrieveCartConfiguration } from "./texno-cart"
 import {
   getAuthHeaders,
-  getCacheOptions,
   getCacheTag,
-  getCartId,
   getPendingCustomer,
   removeAuthToken,
   removeCartId,
@@ -25,19 +24,22 @@ export type CustomerAuthState =
   | { state: "success" }
   | null
 
-// Requests a verification email for the given customer. The request must be
-// authenticated with a token tied to the auth identity (the token returned by
-// register or by a login that requires verification).
-async function requestVerificationEmail(email: string, token: string) {
-  await sdk.auth.verification.request(
-    {
-      entity_id: email,
-      entity_type: "email",
-    },
-    {
-      authorization: `Bearer ${token}`,
-    }
-  )
+const formText = (formData: FormData, key: string) => { const value = formData.get(key); return typeof value === "string" ? value : "" }
+const textField = (formData: FormData, key: string) => formText(formData, key).trim()
+const validEmail = (value: string) => value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+const validPhone = (value: string) => !value || (/^\+?[\d\s()\-]+$/.test(value) && value.replace(/\D/g, "").length >= 10 && value.replace(/\D/g, "").length <= 15)
+const validName = (value: string) => Boolean(value.trim()) && value.length <= 100 && !/[\u0000-\u001f\u007f]/.test(value)
+
+function accountError(error: unknown, fallback = "Не удалось сохранить данные. Повторите попытку.") {
+  const failure = error as FetchError
+  if (failure.status === 401) return "Войдите в аккаунт снова."
+  if (failure.status === 400 && failure.message && !failure.message.startsWith("Invalid request")) return failure.message.slice(0, 300)
+  return fallback
+}
+
+async function invalidateCustomer() {
+  const tag = await getCacheTag("customers")
+  if (tag) revalidateTag(tag, { expire: 0 })
 }
 
 export const retrieveCustomer =
@@ -50,25 +52,23 @@ export const retrieveCustomer =
       ...authHeaders,
     }
 
-    const next = {
-      ...(await getCacheOptions("customers")),
-    }
-
     return await sdk.client
       .fetch<{ customer: HttpTypes.StoreCustomer }>(`/store/customers/me`, {
         method: "GET",
         query: {
-          fields: "*orders",
+          fields: "*addresses,*orders",
         },
         headers,
-        next,
-        cache: "force-cache",
+        cache: "no-store",
       })
       .then(({ customer }) => customer)
       .catch(() => null)
   }
 
 export const updateCustomer = async (body: HttpTypes.StoreUpdateCustomer) => {
+  if (body.first_name !== undefined && !validName(body.first_name ?? "")) throw new Error("Укажите имя до 100 символов")
+  if (body.last_name !== undefined && !validName(body.last_name ?? "")) throw new Error("Укажите фамилию до 100 символов")
+  if (body.phone !== undefined && !validPhone(body.phone ?? "")) throw new Error("Укажите телефон из 10–15 цифр")
   const headers = {
     ...(await getAuthHeaders()),
   }
@@ -78,8 +78,7 @@ export const updateCustomer = async (body: HttpTypes.StoreUpdateCustomer) => {
     .then(({ customer }) => customer)
     .catch(medusaError)
 
-  const cacheTag = await getCacheTag("customers")
-  revalidateTag(cacheTag, { expire: 0 })
+  await invalidateCustomer()
 
   return updateRes
 }
@@ -88,13 +87,18 @@ export async function signup(
   _currentState: unknown,
   formData: FormData
 ): Promise<CustomerAuthState> {
-  const password = formData.get("password") as string
+  const password = formText(formData, "password")
   const customerForm = {
-    email: formData.get("email") as string,
-    first_name: formData.get("first_name") as string,
-    last_name: formData.get("last_name") as string,
-    phone: formData.get("phone") as string,
+    email: textField(formData, "email").toLowerCase(),
+    first_name: textField(formData, "first_name"),
+    last_name: textField(formData, "last_name"),
+    phone: textField(formData, "phone"),
   }
+  if (!validName(customerForm.first_name) || !validName(customerForm.last_name)) return { state: "error", error: "Укажите имя и фамилию до 100 символов" }
+  if (!validEmail(customerForm.email)) return { state: "error", error: "Укажите корректный email" }
+  if (!validPhone(customerForm.phone)) return { state: "error", error: "Укажите телефон из 10–15 цифр" }
+  if (password.length < 8 || password.length > 128) return { state: "error", error: "Пароль должен содержать от 8 до 128 символов" }
+  if (formData.get("consent") !== "on") return { state: "error", error: "Подтвердите согласие на обработку персональных данных" }
 
   try {
     await sdk.auth.register("customer", "emailpass", {
@@ -102,16 +106,8 @@ export async function signup(
       password,
     })
   } catch (error) {
-    const fetchError = error as FetchError
-    // An existing identity (for example, an admin user with the same email) is
-    // expected and handled: the customer can still log in to link a customer
-    // record. Any other error is surfaced.
-    if (
-      fetchError.statusText !== "Unauthorized" ||
-      fetchError.message !== "Identity with email already exists"
-    ) {
-      return { state: "error", error: String(error) }
-    }
+    if (/already exists|already registered|duplicate/i.test((error as Error).message)) return { state: "error", error: "Аккаунт с этим email уже существует. Войдите в него." }
+    return { state: "error", error: accountError(error, "Не удалось создать аккаунт. Повторите попытку.") }
   }
 
   // Persist the extra signup fields. The customer record is created during
@@ -128,8 +124,9 @@ export async function login(
   _currentState: unknown,
   formData: FormData
 ): Promise<CustomerAuthState> {
-  const email = formData.get("email") as string
-  const password = formData.get("password") as string
+  const email = textField(formData, "email")
+  const password = formText(formData, "password")
+  if (!validEmail(email) || !password || password.length > 256) return { state: "error", error: "Укажите email и пароль" }
 
   return completeLogin(email, password)
 }
@@ -144,9 +141,13 @@ async function completeLogin(
   let result: Awaited<ReturnType<typeof sdk.auth.login>>
 
   try {
-    result = await sdk.auth.login("customer", "emailpass", { email, password })
+    result = await sdk.auth.login("customer", "emailpass", { email, password }).catch((error: FetchError) => {
+      if (error.status !== 401 || email === email.toLowerCase()) throw error
+      email = email.toLowerCase()
+      return sdk.auth.login("customer", "emailpass", { email, password })
+    })
   } catch (error) {
-    return { state: "error", error: String(error) }
+    return { state: "error", error: (error as FetchError).status === 401 ? "Неверный email или пароль." : accountError(error, "Не удалось войти. Повторите попытку.") }
   }
 
   // A `location` is returned by third-party auth providers, which this flow
@@ -154,29 +155,25 @@ async function completeLogin(
   if (typeof result === "object" && "location" in result) {
     return {
       state: "error",
-      error: "This login method isn't supported by the storefront.",
+      error: "Этот способ входа пока недоступен.",
     }
   }
 
-  // The backend requires email verification and the customer hasn't verified
-  // yet. Send the verification email and ask them to check their inbox.
+  // A verification challenge does not imply that a message was sent.
   if (
     typeof result === "object" &&
     "verification_required" in result &&
     result.verification_required
   ) {
-    try {
-      await requestVerificationEmail(email, result.token)
-    } catch {
-      // Ignore: the customer can resend from the verification page.
-    }
+    // Sending mail requires a configured delivery provider. Do not claim that
+    // a message was sent simply because the auth endpoint returned a challenge.
     return { state: "verification_required", email }
   }
 
   if (typeof result !== "string") {
     return {
       state: "error",
-      error: "Authentication requires additional steps that aren't supported.",
+      error: "Для входа требуется дополнительное подтверждение. Обратитесь в магазин.",
     }
   }
 
@@ -187,13 +184,18 @@ async function completeLogin(
   // `/store/customers/me` rejects tokens without a registered actor, so a
   // failed retrieve means we still need to create the customer, then log in
   // again to obtain a customer-bound token.
-  const customerExists = await sdk.store.customer
-    .retrieve({}, { authorization: `Bearer ${token}` })
-    .then(() => true)
-    .catch(() => false)
+  let customerExists: boolean
+  try {
+    await sdk.store.customer.retrieve({}, { authorization: `Bearer ${token}` })
+    customerExists = true
+  } catch (error) {
+    if (![401, 404].includes((error as FetchError).status ?? 0)) return { state: "error", error: "Не удалось открыть аккаунт. Повторите попытку." }
+    customerExists = false
+  }
 
   if (!customerExists) {
-    const pending = await getPendingCustomer()
+    const stored = await getPendingCustomer()
+    const pending = stored?.email === email ? stored : null
 
     try {
       await sdk.store.customer.create(
@@ -212,22 +214,19 @@ async function completeLogin(
         password,
       })) as string
     } catch (error) {
-      return { state: "error", error: String(error) }
+      return { state: "error", error: accountError(error, "Не удалось создать профиль покупателя. Повторите вход.") }
     }
 
-    await removePendingCustomer()
   }
+  await removePendingCustomer()
 
   await setAuthToken(token)
 
-  const customerCacheTag = await getCacheTag("customers")
-  revalidateTag(customerCacheTag, { expire: 0 })
+  await invalidateCustomer()
 
   try {
     await transferCart()
-  } catch (error) {
-    return { state: "error", error: String(error) }
-  }
+  } catch { /* The authenticated account remains valid if cart sync is temporarily unavailable. */ }
 
   return { state: "success" }
 }
@@ -248,34 +247,77 @@ export async function confirmEmailVerification(
 }
 
 export async function signout(countryCode: string) {
-  await sdk.auth.logout()
-
+  try { await sdk.auth.logout() } catch { /* Local HttpOnly credentials are cleared even if the auth service is unavailable. */ }
   await removeAuthToken()
+  await removePendingCustomer()
 
   const customerCacheTag = await getCacheTag("customers")
-  revalidateTag(customerCacheTag, { expire: 0 })
+  if (customerCacheTag) revalidateTag(customerCacheTag, { expire: 0 })
 
   await removeCartId()
+  await clearTexnoCartCapability()
 
   const cartCacheTag = await getCacheTag("carts")
-  revalidateTag(cartCacheTag, { expire: 0 })
+  if (cartCacheTag) revalidateTag(cartCacheTag, { expire: 0 })
 
   redirect(`/${countryCode}/account`)
 }
 
 export async function transferCart() {
-  const cartId = await getCartId()
+  if ("authorization" in await getAuthHeaders()) await claimTexnoCart()
+}
 
-  if (!cartId) {
-    return
+export async function updateCustomerProfileName(_state: unknown, formData: FormData) {
+  const first_name = textField(formData, "first_name")
+  const last_name = textField(formData, "last_name")
+  if (!validName(first_name) || !validName(last_name)) return { success: false, error: "Укажите имя и фамилию до 100 символов" }
+  try { await updateCustomer({ first_name, last_name }); return { success: true, error: null } } catch (error) { return { success: false, error: accountError(error) } }
+}
+
+export async function updateCustomerProfilePhone(_state: unknown, formData: FormData) {
+  const phone = textField(formData, "phone")
+  if (!validPhone(phone)) return { success: false, error: "Укажите телефон из 10–15 цифр" }
+  try { await updateCustomer({ phone }); return { success: true, error: null } } catch (error) { return { success: false, error: accountError(error) } }
+}
+
+export async function updateCustomerEmail(_state: unknown, formData: FormData) {
+  const email = textField(formData, "email").toLowerCase()
+  const currentPassword = formText(formData, "current_password")
+  if (!validEmail(email)) return { success: false, error: "Укажите корректный email" }
+  if (!currentPassword) return { success: false, error: "Введите текущий пароль" }
+  try {
+    await sdk.client.fetch("/store/account-security", { method: "POST", headers: await getAuthHeaders(), body: { operation: "email", email, current_password: currentPassword } })
+    await invalidateCustomer()
+    return { success: true, error: null }
+  } catch (error) { return { success: false, error: accountError(error) } }
+}
+
+export async function updateCustomerPassword(_state: unknown, formData: FormData) {
+  const password = formText(formData, "new_password")
+  const currentPassword = formText(formData, "old_password")
+  if (password.length < 8 || password.length > 128) return { success: false, error: "Пароль должен содержать от 8 до 128 символов" }
+  if (password !== formText(formData, "confirm_password")) return { success: false, error: "Пароли не совпадают" }
+  if (!currentPassword) return { success: false, error: "Введите текущий пароль" }
+  try {
+    await sdk.client.fetch("/store/account-security", { method: "POST", headers: await getAuthHeaders(), body: { operation: "password", password, current_password: currentPassword } })
+    return { success: true, error: null }
+  } catch (error) { return { success: false, error: accountError(error) } }
+}
+
+async function customerAddress(formData: FormData) {
+  const address = {
+    address_1: textField(formData, "address_1"),
+    address_2: textField(formData, "address_2"),
+    city: textField(formData, "city"),
+    province: textField(formData, "province"),
+    country_code: textField(formData, "country_code"),
   }
-
-  const headers = await getAuthHeaders()
-
-  await sdk.store.cart.transferCart(cartId, {}, headers)
-
-  const cartCacheTag = await getCacheTag("carts")
-  revalidateTag(cartCacheTag, { expire: 0 })
+  if (!address.address_1 || address.address_1.length > 255 || !address.city || address.city.length > 100) throw new Error("Укажите город и улицу с номером дома")
+  const country = (await retrieveCartConfiguration().catch(() => null))?.country_code
+  if (!country) throw new Error("Не удалось проверить страну доставки. Повторите попытку.")
+  if (address.country_code !== country) throw new Error("Выберите доступную страну доставки")
+  if (Object.values(address).some((value) => value.length > 255 || /[\u0000-\u001f\u007f]/.test(value))) throw new Error("Проверьте поля адреса: не более 255 символов")
+  return address
 }
 
 export const addCustomerAddress = async (
@@ -285,20 +327,8 @@ export const addCustomerAddress = async (
   const isDefaultBilling = (currentState.isDefaultBilling as boolean) || false
   const isDefaultShipping = (currentState.isDefaultShipping as boolean) || false
 
-  const address = {
-    first_name: formData.get("first_name") as string,
-    last_name: formData.get("last_name") as string,
-    company: formData.get("company") as string,
-    address_1: formData.get("address_1") as string,
-    address_2: formData.get("address_2") as string,
-    city: formData.get("city") as string,
-    postal_code: formData.get("postal_code") as string,
-    province: formData.get("province") as string,
-    country_code: formData.get("country_code") as string,
-    phone: formData.get("phone") as string,
-    is_default_billing: isDefaultBilling,
-    is_default_shipping: isDefaultShipping,
-  }
+  let address: HttpTypes.StoreCreateCustomerAddress
+  try { address = { ...await customerAddress(formData), is_default_billing: isDefaultBilling, is_default_shipping: isDefaultShipping || formData.get("is_default_shipping") === "on" } } catch (error) { return { success: false, error: (error as Error).message } }
 
   const headers = {
     ...(await getAuthHeaders()),
@@ -307,32 +337,24 @@ export const addCustomerAddress = async (
   return sdk.store.customer
     .createAddress(address, {}, headers)
     .then(async () => {
-      const customerCacheTag = await getCacheTag("customers")
-      revalidateTag(customerCacheTag, { expire: 0 })
+      await invalidateCustomer()
       return { success: true, error: null }
     })
     .catch((err) => {
-      return { success: false, error: err.toString() }
+      return { success: false, error: accountError(err, "Не удалось сохранить адрес. Повторите попытку.") }
     })
 }
 
 export const deleteCustomerAddress = async (
   addressId: string
 ): Promise<void> => {
+  if (!/^[a-zA-Z0-9_-]{1,200}$/.test(addressId)) throw new Error("Адрес не найден")
   const headers = {
     ...(await getAuthHeaders()),
   }
 
-  await sdk.store.customer
-    .deleteAddress(addressId, headers)
-    .then(async () => {
-      const customerCacheTag = await getCacheTag("customers")
-      revalidateTag(customerCacheTag, { expire: 0 })
-      return { success: true, error: null }
-    })
-    .catch((err) => {
-      return { success: false, error: err.toString() }
-    })
+  await sdk.store.customer.deleteAddress(addressId, headers)
+  await invalidateCustomer()
 }
 
 export const updateCustomerAddress = async (
@@ -342,27 +364,12 @@ export const updateCustomerAddress = async (
   const addressId =
     (currentState.addressId as string) || (formData.get("addressId") as string)
 
-  if (!addressId) {
-    return { success: false, error: "Address ID is required" }
+  if (!addressId || !/^[a-zA-Z0-9_-]{1,200}$/.test(addressId)) {
+    return { success: false, error: "Адрес не найден" }
   }
 
-  const address = {
-    first_name: formData.get("first_name") as string,
-    last_name: formData.get("last_name") as string,
-    company: formData.get("company") as string,
-    address_1: formData.get("address_1") as string,
-    address_2: formData.get("address_2") as string,
-    city: formData.get("city") as string,
-    postal_code: formData.get("postal_code") as string,
-    province: formData.get("province") as string,
-    country_code: formData.get("country_code") as string,
-  } as HttpTypes.StoreUpdateCustomerAddress
-
-  const phone = formData.get("phone") as string
-
-  if (phone) {
-    address.phone = phone
-  }
+  let address: HttpTypes.StoreUpdateCustomerAddress
+  try { address = { ...await customerAddress(formData), ...(formData.has("shipping_default_control") ? { is_default_shipping: formData.get("is_default_shipping") === "on" } : {}) } } catch (error) { return { success: false, error: (error as Error).message } }
 
   const headers = {
     ...(await getAuthHeaders()),
@@ -371,11 +378,10 @@ export const updateCustomerAddress = async (
   return sdk.store.customer
     .updateAddress(addressId, address, {}, headers)
     .then(async () => {
-      const customerCacheTag = await getCacheTag("customers")
-      revalidateTag(customerCacheTag, { expire: 0 })
+      await invalidateCustomer()
       return { success: true, error: null }
     })
     .catch((err) => {
-      return { success: false, error: err.toString() }
+      return { success: false, error: accountError(err, "Не удалось сохранить адрес. Повторите попытку.") }
     })
 }

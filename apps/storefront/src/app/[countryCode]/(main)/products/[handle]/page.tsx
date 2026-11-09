@@ -4,19 +4,21 @@ import { listProducts } from "@lib/data/products"
 import { getRegion, listRegions } from "@lib/data/regions"
 import ProductTemplate from "@modules/products/templates"
 import { HttpTypes } from "@medusajs/types"
+import { buildCatalogStructuredData } from "@lib/util/catalog-structured-data"
 import { isVariantInStock } from "@lib/util/inventory"
 import {
   buildProductStructuredData,
   getPricedVariants,
   toJsonLd,
 } from "@lib/util/product-structured-data"
-import { getSiteOrigin, listCountryCodes, STORE_NAME } from "@lib/util/site"
+import { getSiteOrigin, getStoreName, listCountryCodes } from "@lib/util/site"
+import { CatalogProductDetails, retrieveCatalogProduct } from "@lib/data/catalog-product"
 
 type Props = {
   params: Promise<{ countryCode: string; handle: string }>
 }
 
-export const dynamic = "force-static"
+export const dynamic = "force-dynamic"
 export const revalidate = 60
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
@@ -40,10 +42,12 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const [origin, regions] = await Promise.all([getSiteOrigin(), listRegions()])
   const path = `/products/${product.handle}`
   const productUrl = `${origin}/${params.countryCode}${path}`
-  const description = product.description || product.title
+  const catalog = Boolean(product.metadata?.catalog_scope) ? await retrieveCatalogProduct(product.id) : undefined
+  const description = catalog?.seo?.description || product.description || product.title
+  const title = catalog?.seo?.title || `${product.title} | ${await getStoreName()}`
 
   return {
-    title: `${product.title} | ${STORE_NAME}`,
+    title,
     description,
     alternates: {
       canonical: productUrl,
@@ -56,7 +60,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
       types: { "text/markdown": `${productUrl}.md` },
     },
     openGraph: {
-      title: `${product.title} | ${STORE_NAME}`,
+      title,
       description,
       url: productUrl,
       images: product.thumbnail ? [product.thumbnail] : [],
@@ -67,9 +71,11 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 const ProductMetaTags = ({
   product,
   region,
+  catalog,
 }: {
   product: HttpTypes.StoreProduct
   region: HttpTypes.StoreRegion
+  catalog?: CatalogProductDetails
 }) => {
   const variants = getPricedVariants(product)
   const cheapest = variants.reduce<HttpTypes.StoreProductVariant | undefined>(
@@ -81,8 +87,11 @@ const ProductMetaTags = ({
         : min,
     undefined
   )
-  const currency = region.currency_code.toUpperCase()
-  const amount = cheapest?.calculated_price?.calculated_amount?.toFixed(2)
+  const catalogPrices = catalog?.variants.map((variant) => variant.price).filter((price): price is number => price != null) ?? []
+  const currency = (catalog?.currency_code ?? region.currency_code).toUpperCase()
+  const amount = catalog
+    ? catalogPrices.length ? Math.min(...catalogPrices).toFixed(2) : undefined
+    : cheapest?.calculated_price?.calculated_amount?.toFixed(2)
 
   return (
     <>
@@ -95,10 +104,10 @@ const ProductMetaTags = ({
           <meta property="og:price:currency" content={currency} />
         </>
       )}
-      <meta
+      {!catalog && <meta
         property="product:availability"
         content={variants.some(isVariantInStock) ? "in stock" : "out of stock"}
-      />
+      />}
     </>
   )
 }
@@ -113,7 +122,10 @@ export default async function ProductPage(props: Props) {
 
   const pricedProduct = await listProducts({
     countryCode: params.countryCode,
-    queryParams: { handle: params.handle },
+    queryParams: {
+      handle: params.handle,
+      fields: "*variants.calculated_price,+variants.inventory_quantity,*variants.images,*variants.options,+metadata,+tags,*categories",
+    },
   }).then(({ response }) => response.products[0])
 
   if (!pricedProduct) {
@@ -121,16 +133,20 @@ export default async function ProductPage(props: Props) {
   }
 
   const origin = await getSiteOrigin()
-  const structuredData = buildProductStructuredData({
+  const catalog = Boolean(pricedProduct.metadata?.catalog_scope)
+    ? await retrieveCatalogProduct(pricedProduct.id)
+    : undefined
+  const structuredData = catalog ? buildCatalogStructuredData(pricedProduct, catalog, `${origin}/${params.countryCode}/products/${pricedProduct.handle}`) : buildProductStructuredData({
     product: pricedProduct,
     region,
     countryCode: params.countryCode,
     productUrl: `${origin}/${params.countryCode}/products/${pricedProduct.handle}`,
+    storeName: await getStoreName(),
   })
 
   return (
     <>
-      <ProductMetaTags product={pricedProduct} region={region} />
+      <ProductMetaTags product={pricedProduct} region={region} catalog={catalog} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: toJsonLd(structuredData) }}

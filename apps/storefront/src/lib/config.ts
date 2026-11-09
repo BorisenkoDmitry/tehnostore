@@ -14,7 +14,12 @@ if (typeof window === "undefined" && process.env.MEDUSA_INTERNAL_BACKEND_URL) {
 
 export const sdk = new Medusa({
   baseUrl: MEDUSA_BACKEND_URL,
-  debug: process.env.NODE_ENV === "development",
+  // SDK debug redacts Authorization only; private cart capability headers must
+  // never be written to development logs either.
+  debug: false,
+  // Next's HttpOnly cookie and explicit Authorization headers are the only
+  // customer session source. The shared SDK must never retain a customer JWT.
+  auth: { type: "jwt", jwtTokenStorageMethod: "nostore" },
   publishableKey: process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY,
 })
 

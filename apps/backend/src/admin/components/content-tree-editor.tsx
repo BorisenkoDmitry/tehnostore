@@ -63,13 +63,14 @@ const ReferenceField = ({ name, value, onChange, disabled }: { name: string; val
   </div>
 }
 
-export const ContentTreeEditor = ({ value, onChange, name = "content", path = "content", disabled = false, isFieldVisible }: {
+export const ContentTreeEditor = ({ value, onChange, name = "content", path = "content", disabled = false, isFieldVisible, allowExtraFields = true }: {
   value: ContentValue
   onChange: (value: ContentValue) => void
   name?: string
   path?: string
   disabled?: boolean
   isFieldVisible?: (key: string) => boolean
+  allowExtraFields?: boolean
 }) => {
   const [field, setField] = useState("")
   const [kind, setKind] = useState("text")
@@ -83,7 +84,7 @@ export const ContentTreeEditor = ({ value, onChange, name = "content", path = "c
         <Button type="button" size="small" variant="transparent" disabled={disabled || index === value.length - 1} onClick={() => { const next = [...value]; [next[index + 1], next[index]] = [next[index], next[index + 1]]; updateArray(next) }}>Ниже</Button>
         <Button type="button" size="small" variant="transparent" disabled={disabled} onClick={() => updateArray(value.filter((_, position) => index !== position))}>Удалить</Button>
       </div></div>
-      <ContentTreeEditor value={item} name={name === "product_ids" ? "product_id" : name === "product_handles" ? "product_handle" : name} path={`${path}.${index}`} disabled={disabled} onChange={(next) => updateArray(value.map((entry, position) => index === position ? next : entry))} />
+      <ContentTreeEditor value={item} name={name === "product_ids" ? "product_id" : name === "product_handles" ? "product_handle" : name} path={`${path}.${index}`} disabled={disabled} allowExtraFields={allowExtraFields} onChange={(next) => updateArray(value.map((entry, position) => index === position ? next : entry))} />
     </div>)}
     <Button type="button" variant="secondary" size="small" disabled={disabled} onClick={() => {
       const template = arrayTemplate.current ?? (name === "payment_logos" && path.includes("footer_display") ? { src: "", alt: "", width: 44, height: 24 } : templates[name] ?? "")
@@ -95,14 +96,14 @@ export const ContentTreeEditor = ({ value, onChange, name = "content", path = "c
   if (value && typeof value === "object") return <div className="flex flex-col gap-4">
     {Object.entries(value).filter(([key]) => (isFieldVisible?.(key) ?? true) && key !== "id" && key !== "sourceHref" && !(key === "type" && ["layout-copy", "hero", "benefits", "popular", "accessories", "story", "reviews", "questions"].includes(String(value.id))) && !(key === "order" && "type" in value && "data" in value) && !(key === "enabled" && value.type === "layout-copy") && !key.endsWith("_import_version")).map(([key, item]) => <div key={key} className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2"><Label htmlFor={`${path}.${key}`}>{/^text_\d+$/.test(key) && typeof item === "string" ? `Текст: ${item.slice(0, 60)}${item.length > 60 ? "…" : ""}` : pretty(key)}</Label>{!Array.isArray(item) && item && typeof item === "object" && <Text size="xsmall" className="text-ui-fg-muted">Группа</Text>}</div>
-      <ContentTreeEditor name={key === "url" && name === "image-node" ? "image" : key} path={`${path}.${key}`} disabled={disabled} value={item} onChange={(next) => onChange({ ...value, [key]: next })} />
+      <ContentTreeEditor name={key === "url" && name === "image-node" ? "image" : key} path={`${path}.${key}`} disabled={disabled} allowExtraFields={allowExtraFields} value={item} onChange={(next) => onChange({ ...value, [key]: next })} />
     </div>)}
     {!("category_id" in value) && ("sourceHref" in value || ("mobileImage" in value && "button" in value)) && <div className="flex flex-col gap-2"><Label>Категория перехода</Label><ReferenceField name="category_id" value="" onChange={(category_id) => onChange({ ...value, category_id })} disabled={disabled} /><Text size="small" className="text-ui-fg-subtle">Выбор заменяет прежнюю категорию перехода. До выбора действует существующая ссылка.</Text></div>}
-    <details className="rounded-lg border border-ui-border-base p-3"><summary className="cursor-pointer text-sm text-ui-fg-subtle">Добавить поле</summary><div className="mt-3 flex flex-wrap gap-2">
+    {allowExtraFields && <details className="rounded-lg border border-ui-border-base p-3"><summary className="cursor-pointer text-sm text-ui-fg-subtle">Добавить поле</summary><div className="mt-3 flex flex-wrap gap-2">
       <Input aria-label="Код нового поля" className="flex-1" placeholder="Код поля (например subtitle)" value={field} onChange={(event) => setField(event.target.value)} disabled={disabled} />
       <Select value={kind} onValueChange={setKind}><Select.Trigger className="w-40" aria-label="Тип нового поля"><Select.Value /></Select.Trigger><Select.Content>{[["text", "Текст"], ["number", "Число"], ["boolean", "Да / нет"], ["array", "Список"], ["object", "Группа"]].map(([id, label]) => <Select.Item key={id} value={id}>{label}</Select.Item>)}</Select.Content></Select>
       <Button type="button" size="small" disabled={disabled || !/^[a-z][a-zA-Z0-9_]*$/.test(field) || field in value || isFieldVisible?.(field) === false} onClick={() => { onChange({ ...value, [field]: kind === "number" ? 0 : kind === "boolean" ? true : kind === "array" ? [] : kind === "object" ? {} : "" }); setField("") }}>Добавить</Button>
-    </div></details>
+    </div></details>}
   </div>
   if (typeof value === "boolean") return <Switch id={path} checked={value} disabled={disabled} onCheckedChange={onChange} />
   if (typeof value === "number") return <Input id={path} type="number" step="any" value={value} disabled={disabled} onChange={(event) => onChange(Number(event.target.value))} />

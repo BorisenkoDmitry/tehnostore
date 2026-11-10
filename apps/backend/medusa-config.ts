@@ -6,6 +6,9 @@ loadEnv(process.env.NODE_ENV || "development", process.cwd())
 module.exports = defineConfig({
   logger: redactedLogger,
   modules: [
+    { resolve: "@medusajs/medusa/caching", options: {
+      ...(process.env.REDIS_URL ? { providers: [{ resolve: "@medusajs/medusa/caching-redis", id: "catalog-redis", is_default: true, options: { redisUrl: process.env.REDIS_URL } }] } : { in_memory: { enable: true } }),
+    } },
     { resolve: "@medusajs/medusa/file", options: { providers: [{ resolve: "./src/modules/secure-local-file", id: "local", options: {
       upload_dir: "static",
       private_upload_dir: process.env.PRIVATE_UPLOAD_DIR || "../private-files",

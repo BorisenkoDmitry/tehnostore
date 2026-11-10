@@ -22,6 +22,11 @@
     "test:unit": "node ../../scripts/run-backend-tests.cjs unit --silent"
   },
   "dependencies": {
+    "@blocknote/core": "0.57.0",
+    "@blocknote/mantine": "0.57.0",
+    "@blocknote/react": "0.57.0",
+    "@mantine/core": "8.3.11",
+    "@mantine/hooks": "8.3.11",
     "@medusajs/admin-sdk": "2.22.3",
     "@medusajs/admin-shared": "2.22.3",
     "@medusajs/caching": "2.22.3",

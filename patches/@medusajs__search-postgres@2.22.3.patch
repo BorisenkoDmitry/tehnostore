@@ -1,0 +1,532 @@
+diff --git a/dist/utils/filters.js b/dist/utils/filters.js
+--- a/dist/utils/filters.js
++++ b/dist/utils/filters.js
+@@ -1,237 +1,241 @@
+-"use strict";
+-Object.defineProperty(exports, "__esModule", { value: true });
+-exports.jsonbPath = jsonbPath;
+-exports.toWhereClause = toWhereClause;
+-const utils_1 = require("@medusajs/framework/utils");
+-function fail(message) {
+-    throw new utils_1.MedusaError(utils_1.MedusaError.Types.NOT_ALLOWED, message);
+-}
+-/**
+- * Builds a JSONB path expression against the `indexed` column for a dotted
+- * field path. `variants.color` becomes `indexed->'variants'->'color'`.
+- */
+-function jsonbPath(path, asText = false) {
+-    const segments = path.split(".");
+-    let expr = "indexed";
+-    for (let i = 0; i < segments.length; i++) {
+-        const segment = segments[i].replace(/'/g, "''");
+-        const isLast = i === segments.length - 1;
+-        if (isLast && asText) {
+-            expr += `->>'${segment}'`;
+-        }
+-        else {
+-            expr += `->'${segment}'`;
+-        }
+-    }
+-    return expr;
+-}
+-function castScalar(planned, value) {
+-    if (value === null || value === undefined) {
+-        return null;
+-    }
+-    switch (planned.kind) {
+-        case "number": {
+-            const num = planned.is_date && value instanceof Date
+-                ? value.getTime()
+-                : typeof value === "number"
+-                    ? value
+-                    : Number(value);
+-            if (Number.isNaN(num)) {
+-                fail(`Cannot cast filter value for "${planned.path}" to a number`);
+-            }
+-            return num;
+-        }
+-        case "boolean":
+-            if (typeof value === "boolean") {
+-                return value;
+-            }
+-            if (value === "true" || value === "false") {
+-                return value === "true";
+-            }
+-            return Boolean(value);
+-        default:
+-            return typeof value === "string" ? value : String(value);
+-    }
+-}
+-function nextParam(params, value) {
+-    params.push(value);
+-    return `?`;
+-}
+-/**
+- * Builds `"indexed" @> '{"a":{"b":<leaf>}}'` for a dotted path. Containment is
+- * the one predicate the `jsonb_path_ops` GIN index accelerates, it compares
+- * numbers and booleans natively (unlike `?|`, which only matches string array
+- * elements), and on a collapsed leaf array it means "array contains".
+- */
+-function containmentSql(path, leaf, params) {
+-    const doc = path
+-        .split(".")
+-        .reduceRight((acc, segment) => ({ [segment]: acc }), leaf);
+-    return `"indexed" @> ${nextParam(params, JSON.stringify(doc))}::jsonb`;
+-}
+-function existsSql(planned, exists) {
+-    const expr = jsonbPath(planned.path);
+-    return exists
+-        ? `(${expr} IS NOT NULL AND ${expr} <> 'null'::jsonb)`
+-        : `(${expr} IS NULL OR ${expr} = 'null'::jsonb)`;
+-}
+-function equalitySql(planned, value, params) {
+-    const cast = castScalar(planned, value);
+-    if (cast === null) {
+-        // `indexed` never stores nulls, so equality with null means absence.
+-        return existsSql(planned, false);
+-    }
+-    const leaf = planned.is_array ? [cast] : cast;
+-    return containmentSql(planned.path, leaf, params);
+-}
+-/** Matches when the field equals (or, on arrays, contains) any of the values. */
+-function anyOfSql(planned, values, params) {
+-    if (!values.length) {
+-        return "FALSE";
+-    }
+-    const parts = values.map((value) => equalitySql(planned, value, params));
+-    return parts.length === 1 ? parts[0] : `(${parts.join(" OR ")})`;
+-}
+-function comparisonSql(planned, operator, value, params) {
+-    if (planned.is_array) {
+-        fail(`Operator "${operator}" is not supported on array field "${planned.path}"`);
+-    }
+-    const cast = castScalar(planned, value);
+-    if (planned.kind === "number") {
+-        return `(${jsonbPath(planned.path, true)})::float8 ${operator} ${nextParam(params, cast)}`;
+-    }
+-    if (planned.kind === "boolean") {
+-        return `(${jsonbPath(planned.path, true)})::boolean ${operator} ${nextParam(params, cast)}`;
+-    }
+-    return `${jsonbPath(planned.path, true)} ${operator} ${nextParam(params, cast)}`;
+-}
+-function arrayContainsSql(planned, values, mode, params) {
+-    if (!planned.is_array) {
+-        fail(`Operator $${mode === "all" ? "contains" : "overlaps"} on "${planned.path}" needs an array field`);
+-    }
+-    if (mode === "any") {
+-        return anyOfSql(planned, values, params);
+-    }
+-    // Contains-all is a single containment with every value in the leaf array.
+-    const castValues = values.map((value) => castScalar(planned, value));
+-    return containmentSql(planned.path, castValues, params);
+-}
+-function fieldPredicate(path, raw, plan, params) {
+-    const planned = plan.fields.get(path);
+-    if (!planned) {
+-        fail(`Unknown filter field "${path}" on the postgres search provider`);
+-    }
+-    // Shorthand: bare value or list of values. On array fields this means
+-    // membership ("array contains the value").
+-    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+-        const values = Array.isArray(raw) ? raw : [raw];
+-        return anyOfSql(planned, values, params);
+-    }
+-    const operators = raw;
+-    const keys = Object.keys(operators).filter((key) => key.startsWith("$"));
+-    if (!keys.length) {
+-        fail(`Empty operator map on filter field "${path}"`);
+-    }
+-    const parts = [];
+-    for (const operator of keys) {
+-        const value = operators[operator];
+-        switch (operator) {
+-            case "$eq":
+-                parts.push(equalitySql(planned, value, params));
+-                break;
+-            case "$ne":
+-                // Documents missing the field satisfy "not equal".
+-                parts.push(value === null || value === undefined
+-                    ? existsSql(planned, true)
+-                    : `NOT ${equalitySql(planned, value, params)}`);
+-                break;
+-            case "$in":
+-                parts.push(anyOfSql(planned, Array.isArray(value) ? value : [value], params));
+-                break;
+-            case "$nin":
+-                parts.push(`NOT ${anyOfSql(planned, Array.isArray(value) ? value : [value], params)}`);
+-                break;
+-            case "$gt":
+-                parts.push(comparisonSql(planned, ">", value, params));
+-                break;
+-            case "$gte":
+-                parts.push(comparisonSql(planned, ">=", value, params));
+-                break;
+-            case "$lt":
+-                parts.push(comparisonSql(planned, "<", value, params));
+-                break;
+-            case "$lte":
+-                parts.push(comparisonSql(planned, "<=", value, params));
+-                break;
+-            case "$exists":
+-                parts.push(existsSql(planned, Boolean(value)));
+-                break;
+-            case "$contains":
+-                parts.push(arrayContainsSql(planned, Array.isArray(value) ? value : [value], "all", params));
+-                break;
+-            case "$overlaps":
+-                parts.push(arrayContainsSql(planned, Array.isArray(value) ? value : [value], "any", params));
+-                break;
+-            case "$prefix":
+-            case "$like": {
+-                if (planned.is_array) {
+-                    fail(`Operator "${operator}" is not supported on array field "${path}"`);
+-                }
+-                const pattern = operator === "$prefix" ? `${String(value)}%` : String(value);
+-                parts.push(`${jsonbPath(planned.path, true)} LIKE ${nextParam(params, pattern)}`);
+-                break;
+-            }
+-            default:
+-                fail(`The postgres search provider does not support operator "${operator}" on "${path}"`);
+-        }
+-    }
+-    return parts.length === 1 ? parts[0] : `(${parts.join(" AND ")})`;
+-}
+-/**
+- * Compiles the filter tree into a SQL boolean expression. Unlike the local
+- * provider, `$or` and `$not` are supported — Postgres can express them.
+- */
+-function toWhereClause(filters, plan) {
+-    if (!filters) {
+-        return undefined;
+-    }
+-    const params = [];
+-    const compile = (branch) => {
+-        const parts = [];
+-        for (const [key, value] of Object.entries(branch)) {
+-            if (key === "q") {
+-                continue;
+-            }
+-            if (key === "$and") {
+-                const nested = (value ?? [])
+-                    .map(compile)
+-                    .filter(Boolean);
+-                if (nested.length) {
+-                    parts.push(`(${nested.join(" AND ")})`);
+-                }
+-                continue;
+-            }
+-            if (key === "$or") {
+-                const nested = (value ?? [])
+-                    .map(compile)
+-                    .filter(Boolean);
+-                if (nested.length) {
+-                    parts.push(`(${nested.join(" OR ")})`);
+-                }
+-                continue;
+-            }
+-            if (key === "$not") {
+-                const nested = compile(value);
+-                if (nested) {
+-                    parts.push(`NOT (${nested})`);
+-                }
+-                continue;
+-            }
+-            parts.push(fieldPredicate(key, value, plan, params));
+-        }
+-        return parts.join(" AND ");
+-    };
+-    const sql = compile(filters);
+-    return sql ? { sql, params } : undefined;
+-}
+-//# sourceMappingURL=filters.js.map
++"use strict";
++Object.defineProperty(exports, "__esModule", { value: true });
++exports.jsonbPath = jsonbPath;
++exports.toWhereClause = toWhereClause;
++const utils_1 = require("@medusajs/framework/utils");
++function fail(message) {
++    throw new utils_1.MedusaError(utils_1.MedusaError.Types.NOT_ALLOWED, message);
++}
++/**
++ * Builds a JSONB path expression against the `indexed` column for a dotted
++ * field path. `variants.color` becomes `indexed->'variants'->'color'`.
++ */
++function jsonbPath(path, asText = false) {
++    const segments = path.split(".");
++    let expr = "indexed";
++    for (let i = 0; i < segments.length; i++) {
++        const segment = segments[i].replace(/'/g, "''");
++        const isLast = i === segments.length - 1;
++        if (isLast && asText) {
++            expr += `->>'${segment}'`;
++        }
++        else {
++            expr += `->'${segment}'`;
++        }
++    }
++    return expr;
++}
++function castScalar(planned, value) {
++    if (value === null || value === undefined) {
++        return null;
++    }
++    switch (planned.kind) {
++        case "number": {
++            const num = planned.is_date && value instanceof Date
++                ? value.getTime()
++                : typeof value === "number"
++                    ? value
++                    : Number(value);
++            if (Number.isNaN(num)) {
++                fail(`Cannot cast filter value for "${planned.path}" to a number`);
++            }
++            return num;
++        }
++        case "boolean":
++            if (typeof value === "boolean") {
++                return value;
++            }
++            if (value === "true" || value === "false") {
++                return value === "true";
++            }
++            return Boolean(value);
++        default:
++            return typeof value === "string" ? value : String(value);
++    }
++}
++function nextParam(params, value) {
++    params.push(value);
++    return `?`;
++}
++/**
++ * Builds `"indexed" @> '{"a":{"b":<leaf>}}'` for a dotted path. Containment is
++ * the one predicate the `jsonb_path_ops` GIN index accelerates, it compares
++ * numbers and booleans natively (unlike `?|`, which only matches string array
++ * elements), and on a collapsed leaf array it means "array contains".
++ */
++function containmentSql(path, leaf, params) {
++    const doc = path
++        .split(".")
++        .reduceRight((acc, segment) => ({ [segment]: acc }), leaf);
++    return `"indexed" @> ${nextParam(params, JSON.stringify(doc))}::jsonb`;
++}
++function existsSql(planned, exists) {
++    const expr = jsonbPath(planned.path);
++    return exists
++        ? `(${expr} IS NOT NULL AND ${expr} <> 'null'::jsonb)`
++        : `(${expr} IS NULL OR ${expr} = 'null'::jsonb)`;
++}
++function equalitySql(planned, value, params) {
++    const cast = castScalar(planned, value);
++    if (cast === null) {
++        // `indexed` never stores nulls, so equality with null means absence.
++        return existsSql(planned, false);
++    }
++    const leaf = planned.is_array ? [cast] : cast;
++    return containmentSql(planned.path, leaf, params);
++}
++/** Matches when the field equals (or, on arrays, contains) any of the values. */
++function anyOfSql(planned, values, params) {
++    if (!values.length) {
++        return "FALSE";
++    }
++    const parts = values.map((value) => equalitySql(planned, value, params));
++    return parts.length === 1 ? parts[0] : `(${parts.join(" OR ")})`;
++}
++function comparisonSql(planned, operator, value, params) {
++    if (planned.is_array) {
++        fail(`Operator "${operator}" is not supported on array field "${planned.path}"`);
++    }
++    const cast = castScalar(planned, value);
++    if (planned.kind === "number") {
++        return `(${jsonbPath(planned.path, true)})::float8 ${operator} ${nextParam(params, cast)}`;
++    }
++    if (planned.kind === "boolean") {
++        return `(${jsonbPath(planned.path, true)})::boolean ${operator} ${nextParam(params, cast)}`;
++    }
++    return `${jsonbPath(planned.path, true)} ${operator} ${nextParam(params, cast)}`;
++}
++function arrayContainsSql(planned, values, mode, params) {
++    if (!planned.is_array) {
++        fail(`Operator $${mode === "all" ? "contains" : "overlaps"} on "${planned.path}" needs an array field`);
++    }
++    if (mode === "any") {
++        return anyOfSql(planned, values, params);
++    }
++    // Contains-all is a single containment with every value in the leaf array.
++    const castValues = values.map((value) => castScalar(planned, value));
++    return containmentSql(planned.path, castValues, params);
++}
++function fieldPredicate(path, raw, plan, params) {
++    const planned = plan.fields.get(path);
++    if (!planned) {
++        fail(`Unknown filter field "${path}" on the postgres search provider`);
++    }
++    // Shorthand: bare value or list of values. On array fields this means
++    // membership ("array contains the value").
++    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
++        const values = Array.isArray(raw) ? raw : [raw];
++        return anyOfSql(planned, values, params);
++    }
++    const operators = raw;
++    const keys = Object.keys(operators).filter((key) => key.startsWith("$"));
++    if (!keys.length) {
++        fail(`Empty operator map on filter field "${path}"`);
++    }
++    const parts = [];
++    for (const operator of keys) {
++        const value = operators[operator];
++        switch (operator) {
++            case "$eq":
++                parts.push(equalitySql(planned, value, params));
++                break;
++            case "$ne":
++                // Documents missing the field satisfy "not equal".
++                parts.push(value === null || value === undefined
++                    ? existsSql(planned, true)
++                    : `NOT ${equalitySql(planned, value, params)}`);
++                break;
++            case "$in":
++                parts.push(anyOfSql(planned, Array.isArray(value) ? value : [value], params));
++                break;
++            case "$nin":
++                parts.push(`NOT ${anyOfSql(planned, Array.isArray(value) ? value : [value], params)}`);
++                break;
++            case "$gt":
++                parts.push(comparisonSql(planned, ">", value, params));
++                break;
++            case "$gte":
++                parts.push(comparisonSql(planned, ">=", value, params));
++                break;
++            case "$lt":
++                parts.push(comparisonSql(planned, "<", value, params));
++                break;
++            case "$lte":
++                parts.push(comparisonSql(planned, "<=", value, params));
++                break;
++            case "$exists":
++                parts.push(existsSql(planned, Boolean(value)));
++                break;
++            case "$contains":
++                parts.push(arrayContainsSql(planned, Array.isArray(value) ? value : [value], "all", params));
++                break;
++            case "$overlaps":
++                parts.push(arrayContainsSql(planned, Array.isArray(value) ? value : [value], "any", params));
++                break;
++            case "$prefix":
++            case "$like": {
++                if (planned.is_array) {
++                    fail(`Operator "${operator}" is not supported on array field "${path}"`);
++                }
++                const pattern = operator === "$prefix" ? `${String(value)}%` : String(value);
++                parts.push(`${jsonbPath(planned.path, true)} LIKE ${nextParam(params, pattern)}`);
++                break;
++            }
++            default:
++                fail(`The postgres search provider does not support operator "${operator}" on "${path}"`);
++        }
++    }
++    return parts.length === 1 ? parts[0] : `(${parts.join(" AND ")})`;
++}
++/**
++ * Compiles the filter tree into a SQL boolean expression. Unlike the local
++ * provider, `$or` and `$not` are supported — Postgres can express them.
++ */
++function toWhereClause(filters, plan) {
++    if (!filters) {
++        return undefined;
++    }
++    const params = [];
++    const compile = (branch) => {
++        const { merged, rest } = require("./search-containment.cjs")(branch, plan, castScalar);
++        const parts = [];
++        if (Object.keys(merged).length) {
++            parts.push(`"indexed" @> ${nextParam(params, JSON.stringify(merged))}::jsonb`);
++        }
++        for (const [key, value] of rest) {
++            if (key === "q") {
++                continue;
++            }
++            if (key === "$and") {
++                const nested = (value ?? [])
++                    .map(compile)
++                    .filter(Boolean);
++                if (nested.length) {
++                    parts.push(`(${nested.join(" AND ")})`);
++                }
++                continue;
++            }
++            if (key === "$or") {
++                const nested = (value ?? [])
++                    .map(compile)
++                    .filter(Boolean);
++                if (nested.length) {
++                    parts.push(`(${nested.join(" OR ")})`);
++                }
++                continue;
++            }
++            if (key === "$not") {
++                const nested = compile(value);
++                if (nested) {
++                    parts.push(`NOT (${nested})`);
++                }
++                continue;
++            }
++            parts.push(fieldPredicate(key, value, plan, params));
++        }
++        return parts.join(" AND ");
++    };
++    const sql = compile(filters);
++    return sql ? { sql, params } : undefined;
++}
++//# sourceMappingURL=filters.js.map
+diff --git a/dist/utils/search-containment.cjs b/dist/utils/search-containment.cjs
+new file mode 100644
+--- /dev/null
++++ b/dist/utils/search-containment.cjs
+@@ -0,0 +1,45 @@
++"use strict"
++
++// Collect only positive equality conjuncts. PostgreSQL JSONB containment is
++// compositional for distinct scalar leaves and contains-all array predicates.
++// OR, NOT, null/absence, ranges, and conflicting scalar values stay separate.
++module.exports = function combineContainment(branch, plan, castScalar) {
++  const merged = Object.create(null)
++  const leaves = new Map()
++  const rest = []
++  const terms = []
++  const flatten = (input) => {
++    for (const [field, raw] of Object.entries(input)) {
++      if (field === "q") continue
++      if (field === "$and" && Array.isArray(raw)) raw.forEach(flatten)
++      else terms.push([field, raw])
++    }
++  }
++  flatten(branch)
++  for (const [path, raw] of terms) {
++    const field = plan.fields.get(path)
++    let values
++    if (raw != null && typeof raw !== "object") values = [raw]
++    else if (Array.isArray(raw) && raw.length === 1) values = raw
++    else if (raw && !Array.isArray(raw) && typeof raw === "object") {
++      const keys = Object.keys(raw)
++      if (keys.length === 1 && keys[0] === "$eq") values = [raw.$eq]
++      else if (keys.length === 1 && keys[0] === "$in" && Array.isArray(raw.$in) && raw.$in.length === 1) values = raw.$in
++      else if (keys.length === 1 && keys[0] === "$contains" && field?.is_array) values = Array.isArray(raw.$contains) ? raw.$contains : [raw.$contains]
++    }
++    if (!field || !values?.length || values.some((value) => value == null || typeof value === "object")) { rest.push([path, raw]); continue }
++    const cast = values.map((value) => castScalar(field, value))
++    const previous = leaves.get(path)
++    if (!field.is_array && previous && previous[0] !== cast[0]) { rest.push([path, raw]); continue }
++    const leaf = field.is_array ? [...new Set([...(previous || []), ...cast])] : cast
++    leaves.set(path, leaf)
++    let target = merged
++    const segments = path.split(".")
++    for (const segment of segments.slice(0, -1)) {
++      if (!Object.prototype.hasOwnProperty.call(target, segment)) target[segment] = Object.create(null)
++      target = target[segment]
++    }
++    target[segments[segments.length - 1]] = field.is_array ? leaf : leaf[0]
++  }
++  return { merged, rest }
++}

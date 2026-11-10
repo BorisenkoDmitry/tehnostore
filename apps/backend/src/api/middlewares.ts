@@ -22,12 +22,14 @@ import { CustomerOrderStatusSchema } from "./admin/customer-orders/validators"
 import { CatalogTrashBodySchema, ConstructorProductSchema, FolderSchema, GraphSchema, ProductCanvasListSchema, type CatalogTrashBody, type ConstructorProductBody, type FolderBody, type GraphBody } from "./admin/catalog-constructor/validators"
 import { matchCatalogVariantFilters } from "../search/helpers/match-catalog-variants"
 import { requireCurrentAdminUser } from "./admin-user-guard"
+import { invalidateCatalogAfterWrite } from "./catalog-cache-middleware"
 
 // The product index declares filterable `status` and `sales_channel_ids`, so
 // the route narrows it to published products in the key's sales channels.
 export default defineMiddlewares({
   routes: [
     { matcher: "/admin", middlewares: [requireCurrentAdminUser] },
+    { matcher: "/admin/*", method: ["POST", "DELETE"], middlewares: [invalidateCatalogAfterWrite] },
     { matcher: "/rbac", middlewares: [requireCurrentAdminUser] },
     { matcher: "/admin/customer-orders/orders/:id/status", method: "POST", middlewares: [
       authorize([{ resource: "order", operation: PolicyOperation.update }]), validateAndTransformBody(CustomerOrderStatusSchema),

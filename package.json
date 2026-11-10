@@ -23,6 +23,7 @@
       "tsconfig-paths": "^4.2.0"
     },
     "patchedDependencies": {
+      "@medusajs/search-postgres@2.22.3": "patches/@medusajs__search-postgres@2.22.3.patch",
       "@medusajs/dashboard@2.22.3": "patches/@medusajs__dashboard@2.22.3.patch",
       "@medusajs/medusa@2.22.3": "patches/@medusajs__medusa@2.22.3.patch",
       "@medusajs/ui@4.2.10": "patches/@medusajs__ui@4.2.10.patch",

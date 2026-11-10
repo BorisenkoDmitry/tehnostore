@@ -1,6 +1,6 @@
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { listProducts } from "@lib/data/products"
+import { retrieveProductPage } from "@lib/data/product-page"
 import { getRegion, listRegions } from "@lib/data/regions"
 import ProductTemplate from "@modules/products/templates"
 import { HttpTypes } from "@medusajs/types"
@@ -30,10 +30,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     notFound()
   }
 
-  const product = await listProducts({
-    countryCode: params.countryCode,
-    queryParams: { handle },
-  }).then(({ response }) => response.products[0])
+  const product = await retrieveProductPage(params.countryCode, handle)
 
   if (!product) {
     notFound()
@@ -120,13 +117,7 @@ export default async function ProductPage(props: Props) {
     notFound()
   }
 
-  const pricedProduct = await listProducts({
-    countryCode: params.countryCode,
-    queryParams: {
-      handle: params.handle,
-      fields: "*variants.calculated_price,+variants.inventory_quantity,*variants.images,*variants.options,+metadata,+tags,*categories",
-    },
-  }).then(({ response }) => response.products[0])
+  const pricedProduct = await retrieveProductPage(params.countryCode, params.handle)
 
   if (!pricedProduct) {
     notFound()

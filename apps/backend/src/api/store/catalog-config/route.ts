@@ -1,26 +1,21 @@
 import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
-import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
-import { CATALOG_ATTRIBUTES_MODULE } from "../../../modules/catalog-attributes"
-import CatalogAttributesModuleService from "../../../modules/catalog-attributes/service"
 import { getCatalogProfile } from "../../../lib/catalog-cms"
 import { categoryShortcuts, publishedCategoryIds } from "../../../lib/catalog-hierarchy"
 import { isLibraryDefinition } from "../../../lib/catalog-variation-library"
 import { NAVIGATION_MODULE } from "../../../modules/navigation"
 import type NavigationModuleService from "../../../modules/navigation/service"
 import { publicCategorySeo } from "../../../lib/product-description"
+import { getCatalogCategories, getCatalogDefinitions, cachedCatalogRead } from "../../../lib/catalog-read-cache"
 
 /** The installation profile references native Medusa commerce configuration. */
 export async function GET(req: MedusaRequest, res: MedusaResponse) {
-  const query = req.scope.resolve(ContainerRegistrationKeys.QUERY)
-  const profile = await getCatalogProfile(req.scope)
-  const definitions = await req.scope.resolve<CatalogAttributesModuleService>(CATALOG_ATTRIBUTES_MODULE).listCatalogDefinitions({ enabled: true, public: true }, { take: 1000, order: { position: "ASC", label: "ASC" } })
-  const { data } = await query.graph({
-    entity: "product_category",
-    fields: ["id", "handle", "name", "parent_category_id", "metadata", "is_active", "is_internal"],
-    pagination: { take: 1000 },
-  })
+  const [profile, allDefinitions, data, navigations] = await Promise.all([
+    getCatalogProfile(req.scope), getCatalogDefinitions(req.scope), getCatalogCategories(req.scope),
+    cachedCatalogRead(req.scope, "navigation", ["SiteNavigation:list:*"], () => req.scope.resolve<NavigationModuleService>(NAVIGATION_MODULE).listSiteNavigations({ key: "main" })),
+  ])
+  const definitions = allDefinitions.filter((definition) => definition.enabled && definition.public)
   const published = publishedCategoryIds(data, profile.scope)
-  const [navigation] = await req.scope.resolve<NavigationModuleService>(NAVIGATION_MODULE).listSiteNavigations({ key: "main" })
+  const [navigation] = navigations
   const shortcuts = categoryShortcuts(navigation?.items.find(({ kind }) => kind === "catalog")?.children ?? [])
     .filter(({ category_id, parent_id }) => published.has(category_id) && published.has(parent_id))
   const extraParents = new Map<string, string[]>()

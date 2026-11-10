@@ -6,6 +6,7 @@ import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
 import { CATALOG_ATTRIBUTES_MODULE } from "../modules/catalog-attributes"
 import CatalogAttributesModuleService from "../modules/catalog-attributes/service"
 import { isProductSpecificationCode } from "./product-specification"
+import { cachedCatalogRead } from "./catalog-read-cache"
 
 export type CatalogDefinitionData = {
   id: string; code: string; label: string; type: "text" | "number" | "boolean" | "money"; unit: string | null
@@ -31,11 +32,13 @@ export function matchesCatalogAttributeValues(attribute: CatalogAttributeInput, 
 }
 
 export async function getCatalogProfile(container: MedusaContainer) {
+  return cachedCatalogRead(container, "profile", ["CatalogProfile:list:*", "Region:list:*"], async () => {
   const [profile] = await container.resolve<CatalogAttributesModuleService>(CATALOG_ATTRIBUTES_MODULE).listCatalogProfiles({ key: "store" })
   if (!profile) throw new MedusaError(MedusaError.Types.UNEXPECTED_STATE, "Настройте профиль каталога в Admin")
   const { data: regions } = await container.resolve(ContainerRegistrationKeys.QUERY).graph({ entity: "region", fields: ["id", "currency_code", "name"], filters: { id: profile.region_id } })
   if (!regions[0]) throw new MedusaError(MedusaError.Types.UNEXPECTED_STATE, "Регион профиля каталога недоступен")
   return { id: profile.id, scope: profile.scope, region_id: profile.region_id, currency_code: regions[0].currency_code, product_types: profile.product_types }
+  })
 }
 
 export function normalizeCmsAttributes(rows: { code: string; values: string[] }[], definitions: CatalogDefinitionData[], previous: CatalogAttributeInput[] = [], libraryFields = new Set<string>()): CatalogAttributeInput[] {

@@ -1,0 +1,41 @@
+{
+  "contacts": {"phone": "+7 (495) 104-59-90", "email": "info@texno.store"},
+  "social": [
+    {"label": "Telegram", "url": "https://t.me/Texno_Salle", "enabled": true}
+  ],
+  "legal": {"offer_slug": "public-offer", "privacy_slug": "privacy-policy", "terms_slug": "terms-of-use", "personal_data_slug": "privacy-policy"},
+  "footer": {
+    "text": "TEXNO.STORE Все права защищены",
+    "columns": [
+      {"title": "Меню", "items": [
+        {"label": "О компании", "page_slug": "about-us", "enabled": true},
+        {"label": "Доставка", "page_slug": "delivery", "enabled": true},
+        {"label": "Гарантия", "page_slug": "warranty", "enabled": true},
+        {"label": "Контакты", "page_slug": "contacts", "enabled": true},
+        {"label": "Отзывы", "page_slug": "reviews", "enabled": true},
+        {"label": "FAQ", "page_slug": "faq", "enabled": true},
+        {"label": "Политика конфиденциальности", "page_slug": "privacy-policy", "enabled": true},
+        {"label": "Пользовательское соглашение", "page_slug": "terms-of-use", "enabled": true},
+        {"label": "Публичная оферта", "page_slug": "public-offer", "enabled": true},
+        {"label": "Способы оплаты", "page_slug": "payment-methods", "enabled": true}
+      ]},
+      {"title": "Каталог", "items": [
+        {"label": "Apple iPhone", "navigation_node_id": "apple-iphone", "enabled": true},
+        {"label": "Samsung", "navigation_node_id": "samsung", "enabled": true},
+        {"label": "Xiaomi", "navigation_node_id": "xiaomi", "enabled": true},
+        {"label": "Huawei Honor", "navigation_node_id": "honor", "enabled": true},
+        {"label": "Аксессуары", "navigation_node_id": "aksessuary", "enabled": true}
+      ]}
+    ]
+  },
+  "footer_display": {
+    "phone_label": "Горячая линия", "email_label": "Наш e-mail",
+    "logo_src": "/images/texno-logo.svg", "logo_alt": "TEXNO STORE",
+    "copyright_prefix": "©", "unavailable_social_label": "пока недоступен",
+    "payment_logos": [
+      {"src": "/images/payments/mir.svg", "alt": "МИР", "width": 52, "height": 24},
+      {"src": "/images/payments/mastercard.svg", "alt": "Mastercard", "width": 46, "height": 30},
+      {"src": "/images/payments/visa.svg", "alt": "Visa", "width": 52, "height": 24}
+    ]
+  }
+}

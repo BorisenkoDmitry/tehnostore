@@ -104,10 +104,6 @@ export async function middleware(request: NextRequest) {
   const expiredCookies = await expireCustomerSession(request.cookies, (token) =>
     sessionSdk.store.customer.retrieve({ fields: "id" }, { authorization: `Bearer ${token}` })
   )
-  // Override cookies for this render as well as expiring them in the browser.
-  const forwardedRequest = expiredCookies.length
-    ? { request: { headers: new Headers(request.headers) } }
-    : undefined
   const finish = (response: NextResponse) => {
     expiredCookies.forEach((name) => response.cookies.delete(name))
     return response
@@ -127,6 +123,10 @@ export async function middleware(request: NextRequest) {
   // Serve the default region at "/" instead of redirecting, so agents and
   // crawlers get the storefront content directly from the root URL.
   if (urlHasCountry || request.nextUrl.pathname === "/") {
+    // Forward the current URL and the updated cookies to this render.
+    const headers = new Headers(request.headers)
+    headers.set("x-storefront-url", `${request.nextUrl.pathname}${request.nextUrl.search}`)
+    const forwardedRequest = { request: { headers } }
     const response = urlHasCountry
       ? NextResponse.next(forwardedRequest)
       : NextResponse.rewrite(new URL(`/${country}`, request.url), forwardedRequest)

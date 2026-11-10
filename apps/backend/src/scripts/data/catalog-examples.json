@@ -1,0 +1,42 @@
+[
+  {
+    "source_id": "212750514",
+    "title": "Xiaomi Redmi Note 5 3/32GB Gold - Золотой",
+    "price": 5495,
+    "old_price": 9990,
+    "image": "/images/home/212750514.webp",
+    "source_url": "https://texno.store/collection/xiaomi-redmi-note-5/product/xiaomi-redmi-note-5-332gb-gold-zolotoy",
+    "category_handles": ["xiaomi", "xiaomi-redmi-note-5"],
+    "options": { "Цвет": "Золотой", "Встроенная память": "32 ГБ" }
+  },
+  {
+    "source_id": "212751354",
+    "title": "Apple Airpods 2 с беспроводной зарядкой чехла",
+    "price": 11995,
+    "old_price": 14990,
+    "image": "/images/home/212751354.webp",
+    "source_url": "https://texno.store/collection/naushniki-i-garnitury/product/apple-airpods-2-s-besprovodnoy-zaryadkoy-chehla",
+    "category_handles": ["aksessuary", "naushniki-i-garnitury"],
+    "options": { "Зарядка чехла": "Беспроводная" }
+  },
+  {
+    "source_id": "212752287",
+    "title": "Apple iPhone 11 Pro 256GB Green",
+    "price": 22995,
+    "old_price": 55995,
+    "image": "/images/home/212752287.webp",
+    "source_url": "https://texno.store/collection/apple-iphone-11-pro/product/apple-iphone-11-pro-256gb-green",
+    "category_handles": ["apple-iphone", "apple-iphone-11-pro"],
+    "options": { "Цвет": "Зелёный", "Встроенная память": "256 ГБ" }
+  },
+  {
+    "source_id": "212751281",
+    "title": "Xiaomi Redmi Note 7 4/64GB Black - Черный (Global Version)",
+    "price": 6495,
+    "old_price": 12490,
+    "image": "/images/home/212751281.webp",
+    "source_url": "https://texno.store/collection/xiaomi-redmi-note-7/product/xiaomi-redmi-note-7-464gb-black-chernyy-global-version",
+    "category_handles": ["xiaomi", "xiaomi-redmi-note-7"],
+    "options": { "Цвет": "Чёрный", "Встроенная память": "64 ГБ" }
+  }
+]

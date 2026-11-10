@@ -1,0 +1,22 @@
+.article-block-editor {
+  font-family: inherit;
+  color: inherit;
+}
+
+.article-block-editor .bn-editor {
+  min-height: 360px;
+  padding: 24px 24px 80px 54px;
+  font-family: inherit;
+  background: transparent;
+  color: inherit;
+}
+
+.article-block-editor img {
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  .article-block-editor .bn-editor {
+    padding: 20px 12px 64px 42px;
+  }
+}

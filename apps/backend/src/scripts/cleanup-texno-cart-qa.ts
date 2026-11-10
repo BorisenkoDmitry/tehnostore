@@ -3,6 +3,7 @@ import { ContainerRegistrationKeys, MedusaError } from "@medusajs/framework/util
 import { createStep, createWorkflow, StepResponse, WorkflowResponse } from "@medusajs/framework/workflows-sdk"
 import { cancelOrderWorkflow, deleteProductsWorkflow } from "@medusajs/medusa/core-flows"
 import { CATALOG_ATTRIBUTES_MODULE } from "../modules/catalog-attributes"
+import type CatalogAttributesModuleService from "../modules/catalog-attributes/service"
 
 type CleanupResult = { cleaned: boolean; canceled_orders: string[]; fixture_product_id?: string }
 const cleanupTexnoCartQaStep = createStep("cleanup-texno-cart-qa", async (_: Record<string, never>, { container }): Promise<StepResponse<CleanupResult>> => {
@@ -20,7 +21,7 @@ const cleanupTexnoCartQaStep = createStep("cleanup-texno-cart-qa", async (_: Rec
     canceled.push(order.id)
   }
   await deleteProductsWorkflow(container).run({ input: { ids: [product.id] } })
-  const service = container.resolve(CATALOG_ATTRIBUTES_MODULE)
+  const service = container.resolve<CatalogAttributesModuleService>(CATALOG_ATTRIBUTES_MODULE)
   const records = await service.listCatalogRecords({ source_product_id: "texno-cart-qa-20261107" })
   for (const record of records) {
     const attributes = await service.listCatalogAttributes({ record_id: record.id }, { take: 1000 })

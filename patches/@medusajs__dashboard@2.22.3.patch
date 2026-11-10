@@ -827,7 +827,7 @@ index 0000000..aea47b3
 +  ["sales", "Продажи", "Sales", ["/orders", "/customers", "/content-leads", "/customer-orders"]],
 +  ["catalog", "Каталог", "Catalog", ["/catalog-constructor", "/catalog-constructor/products", "/catalog-constructor/categories", "/catalog-constructor/variants", "/products", "/collections", "/inventory", "/insales-import"]],
 +  ["pricing", "Цены и акции", "Pricing and promotions", ["/price-lists", "/promotions"]],
-+  ["storefront", "Витрина", "Storefront", ["/content-pages", "/navigation", "/content-footer", "/content-reviews", "/storefront/cart"]],
++  ["storefront", "Витрина", "Storefront", ["/content-pages", "/content-articles", "/navigation", "/content-footer", "/content-reviews", "/storefront/cart"]],
 +  ["settings", "Настройки", "Settings", ["/content-settings", "/settings"]]
 +];
 +

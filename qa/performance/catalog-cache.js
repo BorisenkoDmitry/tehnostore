@@ -2,6 +2,7 @@ async (page) => {
   const origin = new URL(page.url()).origin
   const searches = []
   const prefetches = []
+  const actions = []
   const checks = []
   const timings = []
   const check = (name, passed) => {
@@ -12,6 +13,7 @@ async (page) => {
     const url = new URL(request.url())
     if (url.pathname === "/store/search") searches.push(request.postDataJSON())
     if (request.headers()["next-router-prefetch"] === "1") prefetches.push(url.pathname)
+    if (request.headers()["next-action"]) actions.push(url.pathname)
   }
   const ready = () => page.waitForFunction(() =>
     document.querySelector(".texno-store-results")?.getAttribute("aria-busy") === "false")
@@ -88,6 +90,7 @@ async (page) => {
     check("Pagination reuses facets", onlyProducts(searches.slice(beforePage)))
     await page.waitForTimeout(700)
     check("Filtering and pagination do not prefetch product pages", prefetches.length === 0)
+    check("Catalog requests do not invoke locale Server Actions", actions.length === 0)
 
     await page.setViewportSize({ width: 390, height: 844 })
     const mobile = await page.goto(origin + "/ru/store?page=2", { waitUntil: "domcontentloaded" })
@@ -96,7 +99,7 @@ async (page) => {
       document.querySelectorAll(".texno-store-results .texno-product-card").length === 12 &&
       new URL(location.href).searchParams.get("page") === "2" && document.documentElement.scrollWidth <= innerWidth))
 
-    return { checks, timings, prefetches: prefetches.length }
+    return { checks, timings, prefetches: prefetches.length, localeActions: actions.length }
   } finally {
     page.off("request", capture)
     await page.unroute("**/store/search")

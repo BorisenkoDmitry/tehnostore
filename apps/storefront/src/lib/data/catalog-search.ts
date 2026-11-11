@@ -1,5 +1,6 @@
 import "server-only"
 import { searchClient } from "@lib/search-client"
+import { getLocaleHeader } from "@lib/util/get-locale-header"
 import type { CatalogNode } from "./navigation"
 import type { CatalogConfig } from "@modules/store/components/catalog-provider"
 import { parseCatalogState, serializeCatalogState } from "@modules/store/lib/catalog-data"
@@ -12,5 +13,6 @@ export async function getInitialCatalog(search: string, nodes: CatalogNode[], co
   const responses = JSON.parse(JSON.stringify(response.results)) as CatalogSearchResult[]
   const mapped = catalogSearchResponse(responses, state, nodes, config)
   if (serializeCatalogState(mapped.state).toString() !== serializeCatalogState(state).toString()) return null
-  return { search, responses, fetchedAt: Date.now() }
+  const locale = (await getLocaleHeader())["x-medusa-locale"]
+  return { search, responses, fetchedAt: Date.now(), locale }
 }

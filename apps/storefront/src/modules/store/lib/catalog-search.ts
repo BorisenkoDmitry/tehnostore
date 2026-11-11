@@ -7,7 +7,7 @@ export type CatalogSearchResult = {
   facets?: Record<string, Record<string, number>>
   facets_stats?: Record<string, { min: number; max: number }>
 }
-export type InitialCatalog = { search: string; responses: CatalogSearchResult[]; fetchedAt: number }
+export type InitialCatalog = { search: string; responses: CatalogSearchResult[]; fetchedAt: number; locale: string | null }
 const hierarchyOptionKeys = new Set(["тип товара", "бренд", "модель", "модель устройства", "тип аксессуара", "тип"])
 
 export function categoryHandles(category: string, nodes: CatalogNode[], config: CatalogConfig) {
@@ -64,9 +64,9 @@ export function catalogSearchQueries(state: CatalogState, nodes: CatalogNode[], 
   ]
 }
 
-export function catalogSearchKey(request: ReturnType<typeof catalogSearchQueries>[number]) {
+export function catalogSearchKey(request: ReturnType<typeof catalogSearchQueries>[number], locale: string | null = null) {
   const kind = request.params.hitsPerPage === 0 ? "facets" : "products"
-  return ["catalog", "search", kind, request] as const
+  return ["catalog", "search", kind, locale, request] as const
 }
 
 export function catalogSearchResponse(results: CatalogSearchResult[], state: CatalogState, nodes: CatalogNode[], config: CatalogConfig) {

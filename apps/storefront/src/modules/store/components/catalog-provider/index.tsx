@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { hashKey, QueryClient } from "@tanstack/react-query"
 import { sdk } from "@lib/config"
 import { createSearchClient } from "@lib/search-client"
+import { getBrowserLocale } from "@lib/util/get-locale-header"
 import type { CatalogNode } from "@lib/data/navigation"
 import type { ProductDescriptionNode } from "@lib/data/catalog-product"
 import { catalogSearchKey, catalogSearchQueries, catalogSearchResponse, type CatalogSearchResult, type InitialCatalog } from "@modules/store/lib/catalog-search"
@@ -61,6 +62,7 @@ export default function CatalogProvider({ nodes, initialConfig, initialCatalog, 
   const search = useSyncExternalStore(subscribe, getSearch, () => initialCatalog?.search ?? getServerSearch())
   const active = /\/store\/?$/.test(pathname)
   const state = useMemo(() => parseCatalogState(new URLSearchParams(search)), [search])
+  const locale = typeof document === "undefined" ? initialCatalog?.locale ?? null : getBrowserLocale()
   const [queryClient] = useState(() => {
     const client = new QueryClient({ defaultOptions: { queries: {
       retry: false,
@@ -71,7 +73,7 @@ export default function CatalogProvider({ nodes, initialConfig, initialCatalog, 
     if (initialCatalog && initialConfig) {
       const initialState = parseCatalogState(new URLSearchParams(initialCatalog.search))
       catalogSearchQueries(initialState, nodes, initialConfig).forEach((request, index) => {
-        client.setQueryData(catalogSearchKey(request), initialCatalog.responses[index], { updatedAt })
+        client.setQueryData(catalogSearchKey(request, initialCatalog.locale), initialCatalog.responses[index], { updatedAt })
       })
     }
     return client
@@ -157,7 +159,7 @@ export default function CatalogProvider({ nodes, initialConfig, initialCatalog, 
 
   useEffect(() => {
     if (!active || !config) return
-    if (initialSearch.current !== undefined && initialSearch.current === search && attempt === 0 && resetKey === 0) return
+    if (initialSearch.current !== undefined && initialSearch.current === search && initialCatalog?.locale === locale && attempt === 0 && resetKey === 0) return
     initialSearch.current = undefined
     let disposed = false
     const version = ++requestVersion.current
@@ -165,13 +167,13 @@ export default function CatalogProvider({ nodes, initialConfig, initialCatalog, 
     setLoading(true)
     setError(null)
     const requests = catalogSearchQueries(state, nodes, config)
-    const keys = new Set(requests.map((request) => hashKey(catalogSearchKey(request))))
+    const keys = new Set(requests.map((request) => hashKey(catalogSearchKey(request, locale))))
     // Preserve shared in-flight facets while cancelling obsolete selections.
     void queryClient.cancelQueries({ queryKey: ["catalog", "search"],
       predicate: (query) => query.state.fetchStatus === "fetching" && !keys.has(query.queryHash),
     })
     Promise.all(requests.map((request, index) => queryClient.fetchQuery({
-      queryKey: catalogSearchKey(request),
+      queryKey: catalogSearchKey(request, locale),
       staleTime: index === 0 ? PRODUCT_STALE_TIME : FACET_STALE_TIME,
       queryFn: async ({ signal }) => {
         const response = await createSearchClient(signal).search([request])
@@ -191,7 +193,7 @@ export default function CatalogProvider({ nodes, initialConfig, initialCatalog, 
       if (isCurrent()) { setError("Не удалось получить товары. Попробуйте ещё раз."); setLoading(false) }
     })
     return () => { disposed = true }
-  }, [active, config, state, nodes, attempt, write, resetKey, search, pathname, queryClient])
+  }, [active, config, state, nodes, attempt, write, resetKey, search, pathname, queryClient, locale, initialCatalog?.locale])
 
   const retry = () => {
     void queryClient.invalidateQueries({ queryKey: ["catalog"] })

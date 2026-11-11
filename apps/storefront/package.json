@@ -15,6 +15,7 @@
     "analyze": "ANALYZE=true next build"
   },
   "dependencies": {
+    "@tanstack/react-query": "5.64.2",
     "@adyen/adyen-web": "^6.46.0",
     "@headlessui/react": "^2.2.0",
     "@medusajs/icons": "2.22.3",

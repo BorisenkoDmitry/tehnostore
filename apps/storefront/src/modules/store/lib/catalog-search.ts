@@ -7,7 +7,7 @@ export type CatalogSearchResult = {
   facets?: Record<string, Record<string, number>>
   facets_stats?: Record<string, { min: number; max: number }>
 }
-export type InitialCatalog = { search: string; result: CatalogResult }
+export type InitialCatalog = { search: string; responses: CatalogSearchResult[]; fetchedAt: number }
 const hierarchyOptionKeys = new Set(["тип товара", "бренд", "модель", "модель устройства", "тип аксессуара", "тип"])
 
 export function categoryHandles(category: string, nodes: CatalogNode[], config: CatalogConfig) {
@@ -37,7 +37,7 @@ export function catalogSearchQueries(state: CatalogState, nodes: CatalogNode[], 
   const saleOnly = state.sale || state.category === "sale"
   const price = `${saleOnly ? "min_sale_price" : "min_price"}_${currency}`
   const facetFilters: (string | string[])[] = [[`catalog_scope:${config.scope}`]]
-  const handles = categoryHandles(state.category, nodes, config)
+  const handles = categoryHandles(state.category, nodes, config).sort()
   if (handles.length) facetFilters.push(handles.map((handle) => `category_handles:${handle}`))
   if (saleOnly) facetFilters.push([`on_sale_${currency}:true`])
   const availableFilters = [...facetFilters]
@@ -48,8 +48,12 @@ export function catalogSearchQueries(state: CatalogState, nodes: CatalogNode[], 
     const key = canonicalCatalogToken(option.key)
     options.set(key, [...(options.get(key) ?? []), `filter_values:${canonicalCatalogToken(value)}`])
   }
-  facetFilters.push(...Array.from(options.values()))
-  for (const [key, filters] of Array.from(options.entries())) if (hierarchyOptionKeys.has(key)) availableFilters.push(filters)
+  const selections = Array.from(options.entries()).sort(([left], [right]) => left.localeCompare(right))
+  for (const [key, values] of selections) {
+    const filters = Array.from(new Set(values)).sort()
+    facetFilters.push(filters)
+    if (hierarchyOptionKeys.has(key)) availableFilters.push(filters)
+  }
   const numericFilters = [...(state.min ? [`${price}>=${state.min}`] : []), ...(state.max ? [`${price}<=${state.max}`] : [])]
   const sorts: Record<string, string> = { price_asc: `${price}:asc`, price_desc: `${price}:desc`, title_asc: "title:asc", title_desc: "title:desc" }
   const indexName = sorts[state.sort] ? `product/sort/${sorts[state.sort]}` : "product"
@@ -58,6 +62,11 @@ export function catalogSearchQueries(state: CatalogState, nodes: CatalogNode[], 
     { indexName, params: { query: state.q, hitsPerPage: CATALOG_PAGE_SIZE, page: state.page - 1, facetFilters, numericFilters, attributesToRetrieve } },
     { indexName: "product", params: { query: state.q, hitsPerPage: 0, page: 0, facetFilters: availableFilters, facets: ["option_values", "category_handles", price], maxValuesPerFacet: 5000, attributesToRetrieve: ["id"] } },
   ]
+}
+
+export function catalogSearchKey(request: ReturnType<typeof catalogSearchQueries>[number]) {
+  const kind = request.params.hitsPerPage === 0 ? "facets" : "products"
+  return ["catalog", "search", kind, request] as const
 }
 
 export function catalogSearchResponse(results: CatalogSearchResult[], state: CatalogState, nodes: CatalogNode[], config: CatalogConfig) {

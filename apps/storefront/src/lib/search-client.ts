@@ -39,21 +39,28 @@ export const priceAttribute = (field: PriceField, currencyCode: string) =>
  * searches rather than short-circuiting, which is what the listing needs to
  * show every product before anything is refined.
  */
-export const { searchClient } = createInstantSearchAdapter({
-  sdk: sdk as unknown as MedusaSdkLike,
-  path: "/store/search",
-  additionalSearchParameters: {
-    search_options: {
-      match_strategy: "last",
-      count: "exact",
+export function createSearchClient(signal?: AbortSignal) {
+  const transport: MedusaSdkLike = { client: {
+    fetch: (path, init) => sdk.client.fetch(path, { ...init, signal }),
+  } }
+  return createInstantSearchAdapter({
+    sdk: transport,
+    path: "/store/search",
+    additionalSearchParameters: {
+      search_options: {
+        match_strategy: "last",
+        count: "exact",
+      },
     },
-  },
-  // Range widgets read `facets_stats`, which the adapter only produces for
-  // fields listed here. The price fields are declared with a `stats` facet on
-  // the index, which is what makes the stats available at all.
-  numericAttributes: SEARCH_PRICE_CURRENCIES.flatMap((currency) => [
-    `min_price_${currency}`,
-    `min_sale_price_${currency}`,
-    `max_price_${currency}`,
-  ]),
-})
+    // Range widgets read `facets_stats`, which the adapter only produces for
+    // fields listed here. The price fields are declared with a `stats` facet on
+    // the index, which is what makes the stats available at all.
+    numericAttributes: SEARCH_PRICE_CURRENCIES.flatMap((currency) => [
+      `min_price_${currency}`,
+      `min_sale_price_${currency}`,
+      `max_price_${currency}`,
+    ]),
+  }).searchClient
+}
+
+export const searchClient = createSearchClient()

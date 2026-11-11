@@ -2,11 +2,12 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { usePathname } from "next/navigation"
+import { hashKey, QueryClient } from "@tanstack/react-query"
 import { sdk } from "@lib/config"
-import { searchClient } from "@lib/search-client"
+import { createSearchClient } from "@lib/search-client"
 import type { CatalogNode } from "@lib/data/navigation"
 import type { ProductDescriptionNode } from "@lib/data/catalog-product"
-import { catalogSearchQueries, catalogSearchResponse, type CatalogSearchResult, type InitialCatalog } from "@modules/store/lib/catalog-search"
+import { catalogSearchKey, catalogSearchQueries, catalogSearchResponse, type CatalogSearchResult, type InitialCatalog } from "@modules/store/lib/catalog-search"
 import {
 
   CATALOG_CONTEXT_EVENT, navigateCatalogState, parseCatalogState, serializeCatalogState,
@@ -49,6 +50,9 @@ const subscribe = (notify: () => void) => {
 }
 const getSearch = () => window.location.search
 const getServerSearch = () => ""
+const CONFIG_KEY = ["catalog", "config"] as const
+const PRODUCT_STALE_TIME = 15_000
+const FACET_STALE_TIME = 60_000
 
 export { categoryHandles } from "@modules/store/lib/catalog-search"
 
@@ -57,8 +61,24 @@ export default function CatalogProvider({ nodes, initialConfig, initialCatalog, 
   const search = useSyncExternalStore(subscribe, getSearch, () => initialCatalog?.search ?? getServerSearch())
   const active = /\/store\/?$/.test(pathname)
   const state = useMemo(() => parseCatalogState(new URLSearchParams(search)), [search])
+  const [queryClient] = useState(() => {
+    const client = new QueryClient({ defaultOptions: { queries: {
+      retry: false,
+      gcTime: typeof window === "undefined" ? Infinity : 5 * 60_000,
+    } } })
+    const updatedAt = initialCatalog?.fetchedAt ?? Date.now()
+    if (initialConfig) client.setQueryData(CONFIG_KEY, initialConfig, { updatedAt })
+    if (initialCatalog && initialConfig) {
+      const initialState = parseCatalogState(new URLSearchParams(initialCatalog.search))
+      catalogSearchQueries(initialState, nodes, initialConfig).forEach((request, index) => {
+        client.setQueryData(catalogSearchKey(request), initialCatalog.responses[index], { updatedAt })
+      })
+    }
+    return client
+  })
   const [config, setConfig] = useState<CatalogConfig | null>(initialConfig)
-  const [result, setResult] = useState<CatalogResult | null>(initialCatalog?.result ?? null)
+  const [result, setResult] = useState<CatalogResult | null>(() => initialCatalog && initialConfig
+    ? catalogSearchResponse(initialCatalog.responses, state, nodes, initialConfig).result : null)
   const [loading, setLoading] = useState(active && !initialCatalog)
   const [error, setError] = useState<string | null>(null)
   const [attempt, setAttempt] = useState(0)
@@ -113,17 +133,27 @@ export default function CatalogProvider({ nodes, initialConfig, initialCatalog, 
 
   useEffect(() => {
     if (!active) return
+    // Recheck stale prices/configuration when returning to the catalog tab.
+    const refresh = () => { if (document.visibilityState === "visible") setAttempt((value) => value + 1) }
+    window.addEventListener("focus", refresh)
+    return () => window.removeEventListener("focus", refresh)
+  }, [active])
+
+  useEffect(() => {
+    if (!active) return
     if (initialConfig && attempt === 0) return
     let disposed = false
     setLoading(true)
     setError(null)
-    sdk.client.fetch<CatalogConfig>("/store/catalog-config", { cache: "no-store" })
+    queryClient.fetchQuery({ queryKey: CONFIG_KEY, staleTime: FACET_STALE_TIME,
+      queryFn: () => sdk.client.fetch<CatalogConfig>("/store/catalog-config", { cache: "no-store" }),
+    })
       .then((data) => { if (!disposed) setConfig(data) })
       .catch(() => {
         if (!disposed) { setError("Не удалось загрузить каталог. Попробуйте ещё раз."); setLoading(false) }
       })
     return () => { disposed = true }
-  }, [active, initialConfig, attempt])
+  }, [active, initialConfig, attempt, queryClient])
 
   useEffect(() => {
     if (!active || !config) return
@@ -134,9 +164,22 @@ export default function CatalogProvider({ nodes, initialConfig, initialCatalog, 
     const isCurrent = () => !disposed && version === requestVersion.current && window.location.search === search && window.location.pathname === pathname
     setLoading(true)
     setError(null)
-    searchClient.search(catalogSearchQueries(state, nodes, config)).then((response) => {
+    const requests = catalogSearchQueries(state, nodes, config)
+    const keys = new Set(requests.map((request) => hashKey(catalogSearchKey(request))))
+    // Preserve shared in-flight facets while cancelling obsolete selections.
+    void queryClient.cancelQueries({ queryKey: ["catalog", "search"],
+      predicate: (query) => query.state.fetchStatus === "fetching" && !keys.has(query.queryHash),
+    })
+    Promise.all(requests.map((request, index) => queryClient.fetchQuery({
+      queryKey: catalogSearchKey(request),
+      staleTime: index === 0 ? PRODUCT_STALE_TIME : FACET_STALE_TIME,
+      queryFn: async ({ signal }) => {
+        const response = await createSearchClient(signal).search([request])
+        return response.results[0] as unknown as CatalogSearchResult
+      },
+    }))).then((responses) => {
       if (!isCurrent()) return
-      const mapped = catalogSearchResponse(response.results as unknown as CatalogSearchResult[], state, nodes, config)
+      const mapped = catalogSearchResponse(responses, state, nodes, config)
       if (serializeCatalogState(mapped.state).toString() !== serializeCatalogState(state).toString()) {
         write(mapped.state, true)
         return
@@ -148,9 +191,13 @@ export default function CatalogProvider({ nodes, initialConfig, initialCatalog, 
       if (isCurrent()) { setError("Не удалось получить товары. Попробуйте ещё раз."); setLoading(false) }
     })
     return () => { disposed = true }
-  }, [active, config, state, nodes, attempt, write, resetKey, search, pathname])
+  }, [active, config, state, nodes, attempt, write, resetKey, search, pathname, queryClient])
 
-  return <CatalogContext.Provider value={{ state, result, config, loading, contextLoading: resultContext !== resetKey, error, resetKey, update, navigate, resetFilters, getContextVersion, reset, retry: () => setAttempt((value) => value + 1) }}>{children}</CatalogContext.Provider>
+  const retry = () => {
+    void queryClient.invalidateQueries({ queryKey: ["catalog"] })
+    setAttempt((value) => value + 1)
+  }
+  return <CatalogContext.Provider value={{ state, result, config, loading, contextLoading: resultContext !== resetKey, error, resetKey, update, navigate, resetFilters, getContextVersion, reset, retry }}>{children}</CatalogContext.Provider>
 }
 
 export const useCatalogData = () => {

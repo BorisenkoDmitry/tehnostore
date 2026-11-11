@@ -74,6 +74,8 @@ async (page) => {
     await ready()
     const beforeCategory = searches.length
     await page.getByRole("button", { name: "Apple iPhone", exact: true }).first().click()
+    check("Opening a category group does not reload products", searches.length === beforeCategory)
+    await page.getByRole("button", { name: "Все Apple iPhone", exact: true }).click()
     await ready()
     const categoryRequests = searches.slice(beforeCategory)
     check("A different category gets its own products and facets", categoryRequests.length === 2 &&
@@ -81,7 +83,8 @@ async (page) => {
 
     const beforeBack = searches.length
     await page.goBack()
-    await ready()
+    await page.waitForFunction(() => !new URL(location.href).searchParams.has("category") &&
+      document.querySelector(".texno-store-results")?.getAttribute("aria-busy") === "false")
     check("Back navigation reuses the previous category cache", searches.length === beforeBack)
 
     const beforePage = searches.length

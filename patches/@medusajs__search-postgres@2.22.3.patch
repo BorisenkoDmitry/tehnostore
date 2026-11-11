@@ -1,7 +1,7 @@
 diff --git a/dist/utils/filters.js b/dist/utils/filters.js
 --- a/dist/utils/filters.js
 +++ b/dist/utils/filters.js
-@@ -1,237 +1,241 @@
+@@ -1,237 +1,249 @@
 -"use strict";
 -Object.defineProperty(exports, "__esModule", { value: true });
 -exports.jsonbPath = jsonbPath;
@@ -329,6 +329,14 @@ diff --git a/dist/utils/filters.js b/dist/utils/filters.js
 +function anyOfSql(planned, values, params) {
 +    if (!values.length) {
 +        return "FALSE";
++    }
++    // Avoid repeatedly decompressing the same JSONB for large category unions.
++    // COALESCE keeps missing/null fields compatible with negative membership.
++    if (planned.is_array && (planned.kind === "keyword" || planned.kind === "text") &&
++        values.length > 1 && values.every((value) => value !== null && value !== undefined)) {
++        const expr = jsonbPath(planned.path);
++        const choices = values.map((value) => nextParam(params, castScalar(planned, value))).join(", ");
++        return `COALESCE((jsonb_typeof(${expr}) = 'array' AND jsonb_exists_any(${expr}, ARRAY[${choices}]::text[])), FALSE)`;
 +    }
 +    const parts = values.map((value) => equalitySql(planned, value, params));
 +    return parts.length === 1 ? parts[0] : `(${parts.join(" OR ")})`;

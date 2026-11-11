@@ -29,7 +29,7 @@ patchedDependencies:
     hash: 16b11981c2f00c0c2046e96a1f34e5d2afdeb23da0ec378f9e43c929a4ce010f
     path: patches/@medusajs__orchestration@2.22.3.patch
   '@medusajs/search-postgres@2.22.3':
-    hash: 1bfa61c36518b9f3405c0ec671acfe3c56d5bcc2106a04e77bb86e3e9406e60b
+    hash: a9468c20d54d4ee0c51df55e9f275a77809363c1f62fe183ebff3abad49a485a
     path: patches/@medusajs__search-postgres@2.22.3.patch
   '@medusajs/ui@4.2.10':
     hash: 144bdc07f59bf9201c75555d24196b6aefb8e24cf169f56e4a8d6712cace0191
@@ -11019,7 +11019,7 @@ snapshots:
       '@medusajs/region': 2.22.3(@medusajs/framework@2.22.3(patch_hash=7b097354d4597e003d312086514a46b1e2c4c1b1b4117e578804bf38a24ab61b)(@medusajs/cli@2.22.3(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@7.3.7(@types/node@20.19.43)(jiti@2.7.0)(terser@5.51.0)(yaml@2.9.0))(zod@4.2.0))
       '@medusajs/sales-channel': 2.22.3(@medusajs/framework@2.22.3(patch_hash=7b097354d4597e003d312086514a46b1e2c4c1b1b4117e578804bf38a24ab61b)(@medusajs/cli@2.22.3(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@7.3.7(@types/node@20.19.43)(jiti@2.7.0)(terser@5.51.0)(yaml@2.9.0))(zod@4.2.0))
       '@medusajs/search': 2.22.3(@medusajs/framework@2.22.3(patch_hash=7b097354d4597e003d312086514a46b1e2c4c1b1b4117e578804bf38a24ab61b)(@medusajs/cli@2.22.3(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@7.3.7(@types/node@20.19.43)(jiti@2.7.0)(terser@5.51.0)(yaml@2.9.0))(zod@4.2.0))
-      '@medusajs/search-postgres': 2.22.3(patch_hash=1bfa61c36518b9f3405c0ec671acfe3c56d5bcc2106a04e77bb86e3e9406e60b)(@medusajs/framework@2.22.3(patch_hash=7b097354d4597e003d312086514a46b1e2c4c1b1b4117e578804bf38a24ab61b)(@medusajs/cli@2.22.3(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@7.3.7(@types/node@20.19.43)(jiti@2.7.0)(terser@5.51.0)(yaml@2.9.0))(zod@4.2.0))
+      '@medusajs/search-postgres': 2.22.3(patch_hash=a9468c20d54d4ee0c51df55e9f275a77809363c1f62fe183ebff3abad49a485a)(@medusajs/framework@2.22.3(patch_hash=7b097354d4597e003d312086514a46b1e2c4c1b1b4117e578804bf38a24ab61b)(@medusajs/cli@2.22.3(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@7.3.7(@types/node@20.19.43)(jiti@2.7.0)(terser@5.51.0)(yaml@2.9.0))(zod@4.2.0))
       '@medusajs/settings': 2.22.3(@medusajs/framework@2.22.3(patch_hash=7b097354d4597e003d312086514a46b1e2c4c1b1b4117e578804bf38a24ab61b)(@medusajs/cli@2.22.3(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@7.3.7(@types/node@20.19.43)(jiti@2.7.0)(terser@5.51.0)(yaml@2.9.0))(zod@4.2.0))
       '@medusajs/stock-location': 2.22.3(@medusajs/framework@2.22.3(patch_hash=7b097354d4597e003d312086514a46b1e2c4c1b1b4117e578804bf38a24ab61b)(@medusajs/cli@2.22.3(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@7.3.7(@types/node@20.19.43)(jiti@2.7.0)(terser@5.51.0)(yaml@2.9.0))(zod@4.2.0))
       '@medusajs/store': 2.22.3(@medusajs/framework@2.22.3(patch_hash=7b097354d4597e003d312086514a46b1e2c4c1b1b4117e578804bf38a24ab61b)(@medusajs/cli@2.22.3(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@7.3.7(@types/node@20.19.43)(jiti@2.7.0)(terser@5.51.0)(yaml@2.9.0))(zod@4.2.0))
@@ -11219,7 +11219,7 @@ snapshots:
     dependencies:
       '@medusajs/framework': 2.22.3(patch_hash=7b097354d4597e003d312086514a46b1e2c4c1b1b4117e578804bf38a24ab61b)(@medusajs/cli@2.22.3(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@7.3.7(@types/node@20.19.43)(jiti@2.7.0)(terser@5.51.0)(yaml@2.9.0))(zod@4.2.0)
 
-  '@medusajs/search-postgres@2.22.3(patch_hash=1bfa61c36518b9f3405c0ec671acfe3c56d5bcc2106a04e77bb86e3e9406e60b)(@medusajs/framework@2.22.3(patch_hash=7b097354d4597e003d312086514a46b1e2c4c1b1b4117e578804bf38a24ab61b)(@medusajs/cli@2.22.3(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@7.3.7(@types/node@20.19.43)(jiti@2.7.0)(terser@5.51.0)(yaml@2.9.0))(zod@4.2.0))':
+  '@medusajs/search-postgres@2.22.3(patch_hash=a9468c20d54d4ee0c51df55e9f275a77809363c1f62fe183ebff3abad49a485a)(@medusajs/framework@2.22.3(patch_hash=7b097354d4597e003d312086514a46b1e2c4c1b1b4117e578804bf38a24ab61b)(@medusajs/cli@2.22.3(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@7.3.7(@types/node@20.19.43)(jiti@2.7.0)(terser@5.51.0)(yaml@2.9.0))(zod@4.2.0))':
     dependencies:
       '@medusajs/framework': 2.22.3(patch_hash=7b097354d4597e003d312086514a46b1e2c4c1b1b4117e578804bf38a24ab61b)(@medusajs/cli@2.22.3(@types/node@20.19.43))(@types/node@20.19.43)(ioredis@5.11.1)(vite@7.3.7(@types/node@20.19.43)(jiti@2.7.0)(terser@5.51.0)(yaml@2.9.0))(zod@4.2.0)
 

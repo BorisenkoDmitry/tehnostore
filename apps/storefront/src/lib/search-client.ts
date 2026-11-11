@@ -1,6 +1,6 @@
 import {
   createInstantSearchAdapter,
-  type MedusaSdkLike,
+  type SearchResult,
 } from "@medusajs/instantsearch-adapter"
 
 import { sdk } from "@lib/config"
@@ -40,12 +40,13 @@ export const priceAttribute = (field: PriceField, currencyCode: string) =>
  * show every product before anything is refined.
  */
 export function createSearchClient(signal?: AbortSignal) {
-  const transport: MedusaSdkLike = { client: {
-    fetch: (path, init) => sdk.client.fetch(path, { ...init, signal }),
-  } }
   return createInstantSearchAdapter({
-    sdk: transport,
-    path: "/store/search",
+    requester: async (queries) => {
+      const response = await sdk.client.fetch<{ results: SearchResult[] }>("/store/search", {
+        method: "POST", body: { queries }, signal,
+      })
+      return response.results
+    },
     additionalSearchParameters: {
       search_options: {
         match_strategy: "last",
